@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check that OpenCode V2 discovers the project's agents and role permissions."""
+"""Check OpenCode V2 agent discovery, model routing, and role permissions."""
 
 import fnmatch
 import json
@@ -14,6 +14,13 @@ EXPECTED = {
     "visual-reviewer": "subagent",
     "narrative-reviewer": "subagent",
     "browser-qa": "subagent",
+}
+MODEL_PINS = {
+    "iteration-coordinator": ("openai", "gpt-6.1-sol", "medium"),
+    "implementer": ("opencode-go", "deepseek-v4.1-flash", "high"),
+    "visual-reviewer": ("opencode-go", "gpt-6-luna", "medium"),
+    "narrative-reviewer": ("opencode-go", "claude-haiku-5-5", "medium"),
+    "browser-qa": ("opencode-go", "deepseek-v4.1-flash", "low"),
 }
 
 
@@ -35,8 +42,20 @@ def check(condition, message):
 
 def main():
     discovered = json.loads(
-        subprocess.check_output(["opencode", "debug", "agents"], cwd=ROOT, text=True)
+        subprocess.check_output(
+            ["opencode", "debug", "agents"], cwd=ROOT, text=True, timeout=30
+        )
     )
+    catalog_payload = json.loads(
+        subprocess.check_output(
+            ["opencode", "api", "get", "/api/model"],
+            cwd=ROOT, text=True, timeout=30,
+        )
+    )
+    catalog = {
+        (model["providerID"], model["id"]): model
+        for model in catalog_payload["data"]
+    }
     agents = {agent["id"]: agent for agent in discovered}
     files = {path.stem for path in (ROOT / ".opencode/agents").glob("*.md")}
     check(set(EXPECTED) <= files, "an agent definition is missing")
@@ -59,15 +78,30 @@ def main():
                 effect(agent, "edit", "garden.js") == "deny",
                 f"{name} can unexpectedly edit source",
             )
-        print(f"{name}: mode={mode}; steps={agent['steps']}; discovered")
-
-    qa_model = agents["browser-qa"].get("model", {})
-    check(
-        qa_model.get("providerID") == "opencode-go"
-        and qa_model.get("id") == "deepseek-v4.1-flash",
-        "browser-qa must use the configured DeepSeek V4.1 Flash model",
-    )
-    print(f"browser-qa model: {qa_model['providerID']}/{qa_model['id']}")
+        provider, model_id, variant = MODEL_PINS[name]
+        selected = agent.get("model", {})
+        check(
+            (selected.get("providerID"), selected.get("id"), selected.get("variant"))
+            == MODEL_PINS[name],
+            f"{name} does not match its model/variant pin",
+        )
+        check((provider, model_id) in catalog, f"{name}'s model is unavailable")
+        model = catalog[(provider, model_id)]
+        variants = {item["id"] for item in model.get("variants", [])}
+        check(variant in variants, f"{name}'s reasoning variant is unavailable")
+        check(
+            model.get("capabilities", {}).get("tools"),
+            f"{name}'s model needs tool support",
+        )
+        if name in {"visual-reviewer", "narrative-reviewer", "iteration-coordinator"}:
+            check(
+                "image" in model.get("capabilities", {}).get("input", []),
+                f"{name}'s model needs image input for evidence review",
+            )
+        print(
+            f"{name}: {provider}/{model_id}#{variant}; "
+            f"mode={mode}; steps={agent['steps']}"
+        )
 
     checks = [
         ("iteration-coordinator", "edit", "garden.js", "deny"),
@@ -82,7 +116,7 @@ def main():
             effect(agents[name], action, resource) == expected,
             f"{name}: unexpected permission for {action}:{resource}",
         )
-    print("Agent discovery and role permission checks passed.")
+    print("Agent discovery, model routing, capabilities, and permission checks passed.")
 
 
 if __name__ == "__main__":

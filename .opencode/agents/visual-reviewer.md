@@ -1,6 +1,7 @@
 ---
 description: Reviews desktop and mobile screenshots for composition, colour, lighting, 3D readability, and interface polish
 mode: subagent
+model: opencode-go/gpt-6-luna#medium
 steps: 25
 permissions:
   - action: "*"

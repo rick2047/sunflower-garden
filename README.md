@@ -48,17 +48,18 @@ Requires OpenCode V2. Project-local definitions live in `.opencode/agents/`:
 - `iteration-coordinator`: bounded rounds, handoffs, review consolidation, and
   optional validated Git checkpoints; usable as a primary agent or subagent.
 - `implementer`: one scoped change at a time.
-- `browser-qa`: text-based Playwright CLI checks and screenshot capture, pinned
-  to `opencode-go/deepseek-v4.1-flash`.
+- `browser-qa`: text-based Playwright CLI checks and screenshot capture.
 - `visual-reviewer`: read-only desktop/mobile screenshot review; requires an
   image-capable model.
 - `narrative-reviewer`: read-only review against a supplied, approved brief;
   otherwise reports `NOT_ASSESSED`.
 
-The shared contract is in **`docs/iteration-workflow.md`**. It defines run inputs,
-fixed viewports, evidence, review results, budgets, and stop conditions. Browser
-QA has the explicit model override above; other roles inherit the calling
-session's model. Record the actual model and variant for every role per run.
+All five have explicit model/variant pins. Their routing and escalation policy
+live in **`docs/iteration-workflow.md`**, alongside run inputs, fixed viewports,
+evidence, review results, budgets, and stop conditions. Record the actual model
+and variant for every role per run. When using the coordinator as a primary
+agent, select its pinned model separately in the session; choosing a primary
+agent alone does not change an existing session's model.
 
 Inspect discovered definitions from this directory:
 
@@ -66,7 +67,8 @@ Inspect discovered definitions from this directory:
 opencode debug agents
 ```
 
-Check discovery, modes, step budgets, and key role permissions reproducibly:
+Check discovery, modes, model/variant pins, vision capabilities, step budgets,
+and key role permissions reproducibly:
 
 ```sh
 python3 scripts/check_agents.py

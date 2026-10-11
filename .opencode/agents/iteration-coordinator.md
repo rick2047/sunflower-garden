@@ -1,6 +1,7 @@
 ---
 description: Coordinates bounded implementation and browser-review rounds with reproducible handoffs and validated checkpoints
 mode: all
+model: openai/gpt-6.1-sol#medium
 steps: 80
 permissions:
   - action: "*"

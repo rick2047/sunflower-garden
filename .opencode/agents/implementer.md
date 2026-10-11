@@ -1,6 +1,7 @@
 ---
 description: Implements one scoped frontend or Three.js change with explicit acceptance criteria and regression checks
 mode: subagent
+model: opencode-go/deepseek-v4.1-flash#high
 steps: 50
 permissions:
   - action: subagent

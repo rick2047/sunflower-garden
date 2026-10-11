@@ -1,6 +1,7 @@
 ---
 description: Checks pacing, chronology, tone, captions, and visual actions against a user-approved narrative brief
 mode: subagent
+model: opencode-go/claude-haiku-5-5#medium
 steps: 25
 permissions:
   - action: "*"

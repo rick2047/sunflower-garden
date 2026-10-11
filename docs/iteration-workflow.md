@@ -1,9 +1,9 @@
 # Reproducible iteration workflow
 
 These agents define a reusable process, not a finalized story. Agent definitions
-are versioned in `.opencode/agents/`. Model overrides live in their frontmatter;
-roles without overrides inherit the calling session's model. Record each role's
-actual model and variant in each run so later comparisons use the same setup.
+are versioned in `.opencode/agents/`, with explicit model and reasoning-variant
+pins in their frontmatter. Record each role's actual model and variant in each
+run so later comparisons use the same setup.
 Reproducibility means matching inputs, checkpoints, and review criteria, not
 guaranteeing identical model responses.
 
@@ -22,11 +22,30 @@ Only the coordinator delegates; only the implementer changes shared source.
 Browser QA owns its named browser session. The two reviewers consume its evidence
 in parallel instead of navigating the same browser concurrently.
 
-Browser QA uses DeepSeek V4.1 Flash for text-based checks and screenshot capture;
-it does not interpret images. Visual review requires an image-capable model.
-If the inherited model cannot inspect images, the parent must explicitly select
-a suitable model for that review or mark it `BLOCKED`. Image-dependent checks
-belong to visual review rather than an implicit model switch inside browser QA.
+## Model routing
+
+| Role | Default model/variant |
+| --- | --- |
+| `browser-qa` | `opencode-go/deepseek-v4.1-flash#low` |
+| `implementer` | `opencode-go/deepseek-v4.1-flash#high` |
+| `narrative-reviewer` | `opencode-go/claude-haiku-5-5#medium` |
+| `visual-reviewer` | `opencode-go/gpt-6-luna#medium` |
+| `iteration-coordinator` | `openai/gpt-6.1-sol#medium` |
+
+Browser QA is text-based and returns screenshot paths without interpreting them.
+The visual and narrative reviewers use image-capable models. Image-dependent
+checks belong to those reviews rather than an implicit switch inside browser QA.
+
+Pins apply when agents are launched as subagents. Selecting the coordinator as a
+primary agent does not replace an existing session's model; select its pinned
+model/variant separately for that session.
+
+For complex 3D transforms, skeletons, animation/performance bugs, or a failed
+scoped implementation, propose an explicit Sol override for a fresh implementer
+session. The coordinator handles reviewer disagreement and may inspect evidence
+for final artistic judgment. Record any override and retain the same scope and
+budget. When escalation is not authorized, report it as the next action rather
+than silently changing models or starting additional rounds.
 
 ## Run request and handoff
 

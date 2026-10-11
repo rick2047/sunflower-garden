@@ -1,7 +1,7 @@
 ---
 description: Uses text-based Playwright CLI checks and captures screenshots for a separate vision-capable reviewer
 mode: subagent
-model: opencode-go/deepseek-v4.1-flash
+model: opencode-go/deepseek-v4.1-flash#low
 steps: 50
 permissions:
   - action: "*"
