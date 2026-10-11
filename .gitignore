@@ -1,0 +1,17 @@
+# Local credentials and machine-specific state
+.env
+.env.*
+!.env.example
+.local/
+
+# Browser evidence and iteration reports
+.artifacts/
+.playwright-cli/
+test-results/
+playwright-report/
+
+# Generated dependencies and caches
+node_modules/
+__pycache__/
+*.py[cod]
+.DS_Store
