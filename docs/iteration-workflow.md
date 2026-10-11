@@ -1,8 +1,9 @@
 # Reproducible iteration workflow
 
 These agents define a reusable process, not a finalized story. Agent definitions
-are versioned in `.opencode/agents/`; all inherit the calling session's model.
-Record the model and variant in each run so later comparisons use the same setup.
+are versioned in `.opencode/agents/`. Model overrides live in their frontmatter;
+roles without overrides inherit the calling session's model. Record each role's
+actual model and variant in each run so later comparisons use the same setup.
 Reproducibility means matching inputs, checkpoints, and review criteria, not
 guaranteeing identical model responses.
 
@@ -21,6 +22,12 @@ Only the coordinator delegates; only the implementer changes shared source.
 Browser QA owns its named browser session. The two reviewers consume its evidence
 in parallel instead of navigating the same browser concurrently.
 
+Browser QA uses DeepSeek V4.1 Flash for text-based checks and screenshot capture;
+it does not interpret images. Visual review requires an image-capable model.
+If the inherited model cannot inspect images, the parent must explicitly select
+a suitable model for that review or mark it `BLOCKED`. Image-dependent checks
+belong to visual review rather than an implicit model switch inside browser QA.
+
 ## Run request and handoff
 
 Begin with this packet. A coordinator may fill mechanical values by inspecting
@@ -33,7 +40,7 @@ Approved constraints/brief: <user requirements, or no narrative brief>
 Scope: <explicit files/directories allowed to change>
 Base commit: <git rev-parse HEAD>
 Initial worktree changes: <git status --short; preserve these>
-Model/variant: <calling session selection>
+Models/variants: <actual selection for each role>
 URL: http://127.0.0.1:8098
 Budget: <maximum rounds and/or deadline>
 Checkpoints: false | true

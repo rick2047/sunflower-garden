@@ -48,14 +48,17 @@ Requires OpenCode V2. Project-local definitions live in `.opencode/agents/`:
 - `iteration-coordinator`: bounded rounds, handoffs, review consolidation, and
   optional validated Git checkpoints; usable as a primary agent or subagent.
 - `implementer`: one scoped change at a time.
-- `browser-qa`: Playwright CLI evidence and interaction checks.
-- `visual-reviewer`: read-only desktop/mobile screenshot review.
+- `browser-qa`: text-based Playwright CLI checks and screenshot capture, pinned
+  to `opencode-go/deepseek-v4.1-flash`.
+- `visual-reviewer`: read-only desktop/mobile screenshot review; requires an
+  image-capable model.
 - `narrative-reviewer`: read-only review against a supplied, approved brief;
   otherwise reports `NOT_ASSESSED`.
 
 The shared contract is in **`docs/iteration-workflow.md`**. It defines run inputs,
-fixed viewports, evidence, review results, budgets, and stop conditions. Model
-selection is inherited from the calling session and recorded per run.
+fixed viewports, evidence, review results, budgets, and stop conditions. Browser
+QA has the explicit model override above; other roles inherit the calling
+session's model. Record the actual model and variant for every role per run.
 
 Inspect discovered definitions from this directory:
 

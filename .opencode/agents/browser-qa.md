@@ -1,6 +1,7 @@
 ---
-description: Uses Playwright CLI to verify a running site and produce reproducible desktop/mobile evidence without editing source
+description: Uses text-based Playwright CLI checks and captures screenshots for a separate vision-capable reviewer
 mode: subagent
+model: opencode-go/deepseek-v4.1-flash
 steps: 50
 permissions:
   - action: "*"
@@ -40,6 +41,11 @@ permissions:
 
 Read the handoff and the evidence/review contracts in
 `docs/iteration-workflow.md`. Load the `playwright-cli` skill before browser work.
+
+This role is text-only. Inspect DOM snapshots, console output, request logs, and
+JavaScript state. Capture screenshots and return their paths without reading
+image contents. Route image-dependent questions through the parent to the
+vision-capable `visual-reviewer`; mark those checks unverified in your own report.
 
 1. Confirm the supplied server and installed CLI are available. Use the assigned
    `qa-<run-id>` session, not someone else's browser. Report unavailable tooling

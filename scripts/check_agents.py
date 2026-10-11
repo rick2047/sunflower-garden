@@ -61,6 +61,14 @@ def main():
             )
         print(f"{name}: mode={mode}; steps={agent['steps']}; discovered")
 
+    qa_model = agents["browser-qa"].get("model", {})
+    check(
+        qa_model.get("providerID") == "opencode-go"
+        and qa_model.get("id") == "deepseek-v4.1-flash",
+        "browser-qa must use the configured DeepSeek V4.1 Flash model",
+    )
+    print(f"browser-qa model: {qa_model['providerID']}/{qa_model['id']}")
+
     checks = [
         ("iteration-coordinator", "edit", "garden.js", "deny"),
         ("iteration-coordinator", "edit", ".artifacts/test/packet.md", "allow"),
