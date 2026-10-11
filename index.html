@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Balcony Giants — a sunflower story</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1020;
+    font-family: Georgia, 'Times New Roman', serif; }
+  #scene { position: fixed; inset: 0; }
+  #caption { position: fixed; left: 0; right: 0; bottom: 64px; text-align: center;
+    color: #fff8ea; text-shadow: 0 2px 12px rgba(0,0,0,.7); pointer-events: none;
+    padding: 0 24px; }
+  #caption h1 { font-size: clamp(20px, 4vw, 40px); margin: 0 0 8px; font-weight: normal;
+    letter-spacing: .5px; }
+  #caption p { font-size: clamp(14px, 2.2vw, 20px); margin: 0; opacity: .92; font-style: italic; }
+  #ui { position: fixed; left: 0; right: 0; bottom: 16px; display: flex;
+    align-items: center; justify-content: center; gap: 14px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #fff8ea;
+    background: transparent; cursor: pointer; padding: 0; opacity: .8; }
+  .dot.active { background: #ffd54a; border-color: #ffd54a; }
+  .navbtn { background: rgba(0,0,0,.35); color: #fff8ea; border: 1px solid rgba(255,248,234,.6);
+    border-radius: 20px; padding: 6px 16px; font-size: 15px; cursor: pointer;
+    font-family: inherit; }
+  .navbtn:hover { background: rgba(0,0,0,.6); }
+  #title { position: fixed; top: 14px; left: 18px; color: #fff8ea; opacity: .85;
+    font-size: 15px; letter-spacing: 2px; text-shadow: 0 1px 8px rgba(0,0,0,.8); }
+  .bubble { position: fixed; max-width: 240px; background: rgba(255,253,245,.95);
+    color: #3a2f22; border-radius: 14px; padding: 8px 12px; font-size: 14px;
+    font-style: normal; pointer-events: none; transform: translate(-50%, -110%);
+    box-shadow: 0 4px 16px rgba(0,0,0,.35); transition: opacity .4s; white-space: normal; }
+  .bubble:after { content: ''; position: absolute; left: 50%; bottom: -8px;
+    margin-left: -8px; border: 8px solid transparent; border-top-color: rgba(255,253,245,.95);
+    border-bottom: 0; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+</head>
+<body>
+<div id="scene"></div>
+<div id="title">BALCONY GIANTS</div>
+<div class="bubble" id="bub-p"></div>
+<div class="bubble" id="bub-a"></div>
+<div id="caption"><h1></h1><p></p></div>
+<div id="ui">
+  <button class="navbtn" id="prev">‹</button>
+  <button class="navbtn" id="play">Pause</button>
+  <button class="navbtn" id="next">›</button>
+</div>
+<script type="module" src="./garden.js"></script>
+</body>
+</html>

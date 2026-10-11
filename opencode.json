@@ -1,0 +1,10 @@
+{
+  "mcp": {
+    "servers": {
+      "blockbench": {
+        "type": "remote",
+        "url": "http://localhost:3000/bb-mcp"
+      }
+    }
+  }
+}
