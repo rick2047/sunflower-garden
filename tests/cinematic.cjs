@@ -377,8 +377,76 @@ async page => {
     for (const [width,height] of [[1440,900],[390,844]]) {
       await page.setViewportSize({width,height});
       await page.evaluate(() => window.__garden.seek(7,12.5));
-      const layout = await page.locator('#subtitles').boundingBox();
-      assert(layout.x >= 0 && layout.x + layout.width <= width && layout.y + layout.height <= height, 'Subtitle overflow');
+      const layout = await page.locator('#speech-bubble').boundingBox();
+      assert(layout.x >= 0 && layout.x + layout.width <= width && layout.y + layout.height <= height, 'Speech bubble overflow');
+    }
+    // The character-attributed bubble remains deterministic across every chapter.
+    for (const [width,height] of [[1440,900],[390,844]]) {
+      await page.setViewportSize({width,height});
+      const bubbles = await page.evaluate(() => {
+        const g = window.__garden;
+        const bubble = document.getElementById('speech-bubble');
+        const results = [];
+        for (let chapter = 0; chapter < g.chapters.length; chapter++) {
+          const line = g.chapters[chapter].dialogue[0];
+          const time = (line.start + line.end) / 2;
+          g.seek(chapter, time);
+          const state = g.state();
+          const rect = bubble.getBoundingClientRect();
+          const first = state.bubbleLayout && { left: state.bubbleLayout.left,
+            top: state.bubbleLayout.top, width: state.bubbleLayout.width,
+            height: state.bubbleLayout.height, speaker: state.bubbleLayout.speaker,
+            anchor: state.bubbleLayout.anchor, tailOffset: state.bubbleLayout.tailOffset,
+            placement: state.bubbleLayout.placement };
+          let repeated = null;
+          if ([0, 6, 11].includes(chapter)) {
+            g.seek(0, 8);
+            g.seek(chapter, time);
+            repeated = g.state().bubbleLayout;
+          }
+          results.push({ chapter, dialogue: g.dialogue(), first, repeated,
+            rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
+              width: rect.width, height: rect.height },
+            visible: bubble.classList.contains('visible'), speaker: bubble.dataset.speaker,
+            placement: bubble.dataset.placement,
+            tailOffset: parseFloat(getComputedStyle(bubble).getPropertyValue('--bubble-tail-offset')),
+            speakerText: document.getElementById('bubble-speaker').textContent,
+            text: document.getElementById('bubble-text').textContent,
+            announcement: document.getElementById('announcement').textContent });
+        }
+        return results;
+      });
+      assert(bubbles.length === 12, 'Not every chapter has a dialogue bubble sample');
+      for (const sample of bubbles) {
+        const { rect, dialogue, first, repeated } = sample;
+        assert(sample.visible, `Speech bubble hidden in chapter ${sample.chapter}`);
+        assert(sample.speaker === dialogue.speaker && sample.speakerText === dialogue.speaker,
+          `Speech bubble speaker mismatch in chapter ${sample.chapter}`);
+        assert(sample.text === dialogue.text, `Speech bubble text mismatch in chapter ${sample.chapter}`);
+        assert(sample.announcement === `${dialogue.speaker}: ${dialogue.text}`,
+          `Accessible dialogue announcement missing in chapter ${sample.chapter}`);
+        assert(first?.speaker === dialogue.speaker, `Missing projected bubble layout in chapter ${sample.chapter}`);
+        assert(Math.abs(rect.left - first.left) < 1 && Math.abs(rect.top - first.top) < 1,
+          `Bubble DOM position differs from its layout in chapter ${sample.chapter}`);
+        assert(sample.placement === first.placement
+          && Math.abs(sample.tailOffset - first.tailOffset) < 0.1,
+        `Bubble tail does not follow its speaker anchor in chapter ${sample.chapter}`);
+        const tailX = rect.left + rect.width / 2 + sample.tailOffset;
+        assert(Math.abs(tailX - first.anchor.x) <= rect.width / 2,
+          `Bubble tail is detached from its speaker in chapter ${sample.chapter}`);
+        if (repeated) {
+          assert(Math.abs(first.left - repeated.left) < 0.01 && Math.abs(first.top - repeated.top) < 0.01,
+            `Speech bubble layout is history-dependent in chapter ${sample.chapter}`);
+        }
+        assert(rect.left >= 0 && rect.right <= width && rect.top >= 0 && rect.bottom <= height,
+          `Speech bubble overflows ${width}x${height} in chapter ${sample.chapter}`);
+        assert(rect.width > 0 && rect.height > 0, `Speech bubble has no size in chapter ${sample.chapter}`);
+      }
+      assert(await page.locator('#subtitles').count() === 0,
+        'Legacy fixed subtitle panel remains in the playback presentation');
+      await page.evaluate(() => window.__garden.seek(0, 1));
+      assert(!(await page.locator('#speech-bubble').evaluate(el => el.classList.contains('visible'))),
+        'Speech bubble remains visible during a quiet beat');
     }
     // Every required action contact must stay inside both viewports. This is a
     // framing check only; it is not image evidence that the contact is visible.

@@ -1,16 +1,13 @@
 // Run with: node tests/story-modules.mjs
-// Pure-module checks for the extracted screenplay, named cues and subtitles.
+// Pure-module checks for the extracted screenplay, named cues and bubble layout.
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
 import { CHAPTERS, STORY_DURATION, capturesFor, dialogueAt } from '../screenplay.js';
 import { FOLEY_CUES, JOY_APPROACH, STORY_CUES, foleyCuesFor, lineCue } from '../story-cues.js';
-import { createPresentation, createSubtitles } from '../presentation.js';
+import { layoutSpeechBubble } from '../speech-bubble-layout.js';
+import { createPresentation } from '../presentation.js';
 import { Soundscape } from '../soundscape.js';
 
-const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const sha = (value) => crypto.createHash('sha256').update(value).digest('hex');
 
 assert.equal(CHAPTERS.length, 12, 'screenplay must keep 12 chapters');
@@ -40,6 +37,44 @@ assert.equal(STORY_CUES['morning-after'].holdStart, 22.8);
 assert.equal(STORY_CUES.sowing.rise, 23.5);
 assert.equal(STORY_CUES.summer.soundFadeStart, 29.6);
 
+const bubbleLayout = (overrides = {}) => layoutSpeechBubble({
+  anchor: { x: 195, y: 280 },
+  size: { width: 220, height: 88 },
+  viewport: { width: 390, height: 844 },
+  safeArea: { top: 58, right: 12, bottom: 142, left: 12 },
+  ...overrides,
+});
+const above = bubbleLayout();
+assert.equal(above.placement, 'above');
+assert.deepEqual([above.left, above.top], [85, 178]);
+assert.equal(above.tailOffset, 0);
+
+const below = bubbleLayout({ anchor: { x: 195, y: 70 } });
+assert.equal(below.placement, 'below', 'bubble moves below a head near the top safe area');
+assert.ok(below.top >= 58);
+assert.ok(below.top + below.height <= 844 - 142);
+
+const avoiding = bubbleLayout({
+  anchor: { x: 195, y: 400 },
+  size: { width: 120, height: 80 },
+  obstacles: [{ left: 135, right: 180, top: 300, bottom: 380 }],
+});
+assert.ok(avoiding.left >= 12 && avoiding.left + avoiding.width <= 390 - 12);
+assert.ok(avoiding.top >= 58 && avoiding.top + avoiding.height <= 844 - 142);
+assert.ok(!(avoiding.left < 180 && avoiding.left + avoiding.width > 135
+  && avoiding.top < 380 && avoiding.top + avoiding.height > 300),
+'bubble layout avoids an obstructed preferred position');
+assert.deepEqual(bubbleLayout({ anchor: { x: 195, y: 70 } }), below,
+  'speech-bubble placement is deterministic');
+const shortViewport = layoutSpeechBubble({
+  anchor: { x: 160, y: 90 },
+  size: { width: 200, height: 80 },
+  viewport: { width: 320, height: 180 },
+  safeArea: { top: 86, right: 12, bottom: 118, left: 12 },
+});
+assert.deepEqual([shortViewport.left, shortViewport.top], [60, 50],
+  'bubble centers safely when fixed UI insets exceed a short viewport');
+
 const steps = foleyCuesFor('bloom');
 assert.equal(steps.length, 4);
 assert.deepEqual(steps.map((cue) => cue.at), [15.9, 16.3, 16.7, 17.1]);
@@ -47,31 +82,6 @@ assert.ok(steps.every((cue) => cue.kind === 'footstep'));
 assert.deepEqual(steps.map((cue) => cue.side), ['R', 'L', 'R', 'L']);
 assert.deepEqual(FOLEY_CUES.dawn.map((cue) => cue.at), [2.2]);
 assert.deepEqual(FOLEY_CUES['seven-am'].map((cue) => cue.at), [5, 6.7]);
-
-function fakeElement() {
-  const values = new Set();
-  return {
-    textContent: '',
-    classList: {
-      contains: (name) => values.has(name),
-      toggle(name, on) { if (on) values.add(name); else values.delete(name); },
-    },
-  };
-}
-const elements = new Map([
-  ['subtitles', fakeElement()],
-  ['subtitle-speaker', fakeElement()],
-  ['subtitle-text', fakeElement()],
-  ['announcement', fakeElement()],
-]);
-const subtitles = createSubtitles({ getElementById: (id) => elements.get(id) });
-const line = dialogueAt(11, 28);
-assert.equal(subtitles.update(line), true);
-assert.equal(elements.get('subtitle-text').textContent, 'Especially the part with you.');
-assert.equal(elements.get('subtitle-speaker').textContent, 'Paresh');
-assert.equal(elements.get('subtitles').classList.contains('visible'), true);
-assert.equal(elements.get('announcement').textContent, 'Paresh: Especially the part with you.');
-assert.equal(subtitles.update(line), false, 'unchanged subtitle must not write again');
 
 // Exercise the extracted control module against a minimal DOM double.
 function fakeClassList() {
@@ -99,8 +109,8 @@ function fakeControlElement(id = '') {
 }
 function fakeDocument() {
   const ids = new Map();
-  for (const id of ['caption', 'counter', 'dots', 'play', 'subtitles', 'subtitle-speaker',
-    'subtitle-text', 'announcement', 'transcript-lines', 'prev', 'next', 'replay',
+  for (const id of ['caption', 'counter', 'dots', 'play', 'speech-bubble', 'bubble-speaker',
+    'bubble-text', 'announcement', 'transcript-lines', 'prev', 'next', 'replay',
     'continue', 'story-notes', 'transcript', 'transcript-close']) ids.set(id, fakeControlElement(id));
   ids.get('transcript-lines').appendChild = (child) => ids.get('transcript-lines').children.push(child);
   const body = fakeControlElement('body');
@@ -161,9 +171,4 @@ assert.deepEqual(struck, [
 ], 'joy gait footfalls did not fire at their plants');
 assert.equal(struck.every(([, at]) => JOY_APPROACH.footfalls.includes(at)), true);
 
-const garden = readFileSync(join(root, 'garden.js'), 'utf8');
-assert.ok(!garden.includes('placeSpeechBubbles'), 'legacy bubble placement still present');
-assert.ok(!garden.includes('bubble-paresh'), 'hidden bubble DOM dependency still present');
-assert.ok(!garden.includes('projectHead('), 'legacy bubble projection still present');
-
-console.log('story modules ok: 12 chapters, 399 s, named foley/footstep cues, subtitle dedupe');
+console.log('story modules ok: 12 chapters, 399 s, named cues, speech-bubble layout');

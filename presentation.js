@@ -1,6 +1,6 @@
-// Presentation-only DOM: subtitles, chapter caption/transport and the story
-// transcript. Story timing stays in screenplay.js; this module never decides
-// what a line says or when it is spoken.
+// Presentation-only DOM: speech bubble, chapter caption/transport and transcript.
+// Story timing stays in screenplay.js; this module never decides what a line
+// says or when it is spoken.
 
 function byId(document, id) {
   const element = document.getElementById(id);
@@ -8,26 +8,47 @@ function byId(document, id) {
   return element;
 }
 
-export function createSubtitles(document = globalThis.document) {
-  const subtitles = byId(document, 'subtitles');
-  const speaker = byId(document, 'subtitle-speaker');
-  const text = byId(document, 'subtitle-text');
+export function createSpeechBubble(document = globalThis.document) {
+  const bubble = byId(document, 'speech-bubble');
+  const speaker = byId(document, 'bubble-speaker');
+  const text = byId(document, 'bubble-text');
   const announcement = byId(document, 'announcement');
   let dialogueKey = '';
 
   function update(d) {
     const key = `${d.chapter}:${d.index}:${d.text}:${d.reaction}`;
-    if (key === dialogueKey) return false; // No live-region writes on quiet frames.
+    if (key === dialogueKey) return false;
     dialogueKey = key;
     speaker.textContent = d.speaker || '';
     text.textContent = d.text;
-    subtitles.classList.toggle('visible', d.phase === 'line');
-    // Announce spoken text once; the decorative listener reaction is aria-hidden.
+    bubble.dataset.speaker = d.speaker || '';
+    bubble.classList.toggle('visible', d.phase === 'line');
     announcement.textContent = d.phase === 'line' ? `${d.speaker}: ${d.text}` : '';
     return true;
   }
 
-  return { update };
+  function position(layout) {
+    if (!layout) {
+      bubble.classList.remove('visible');
+      bubble.style.left = '';
+      bubble.style.top = '';
+      bubble.style.removeProperty('--bubble-tail-offset');
+      bubble.dataset.placement = '';
+      return;
+    }
+    bubble.style.left = `${layout.left}px`;
+    bubble.style.top = `${layout.top}px`;
+    bubble.style.setProperty('--bubble-tail-offset', `${layout.tailOffset}px`);
+    bubble.dataset.placement = layout.placement;
+    bubble.classList.add('visible');
+  }
+
+  function measure() {
+    const { width, height } = bubble.getBoundingClientRect();
+    return { width, height };
+  }
+
+  return { update, position, measure };
 }
 
 export function createPresentation({
@@ -40,7 +61,7 @@ export function createPresentation({
   const counterEl = byId(document, 'counter');
   const dotsWrap = byId(document, 'dots');
   const playBtn = byId(document, 'play');
-  const subtitles = createSubtitles(document);
+  const speechBubble = createSpeechBubble(document);
   const dots = [];
   let captionChapter = -1;
   let chromeTimer = 0;
@@ -52,8 +73,12 @@ export function createPresentation({
   }
 
   function updateDialogue(d) {
-    return subtitles.update(d);
+    return speechBubble.update(d);
   }
+
+  function positionDialogue(layout) { speechBubble.position(layout); }
+
+  function measureDialogue() { return speechBubble.measure(); }
 
   function updateCaption(index) {
     const chapter = chapters[index];
@@ -134,5 +159,6 @@ export function createPresentation({
   }
 
   const dispose = () => clearTimeout(chromeTimer);
-  return { updateDialogue, updateCaption, setPlayLabel, revealControls, mount, dots, playBtn, dispose };
+  return { updateDialogue, positionDialogue, measureDialogue, updateCaption,
+    setPlayLabel, revealControls, mount, dots, playBtn, dispose };
 }

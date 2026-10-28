@@ -3,6 +3,27 @@
 This is a Three.js garden experience delivered through static HTML/JavaScript.
 Three.js is the default workspace for modeling, rigging, animation and rendering.
 
+## Ground truths
+
+- During story playback, every dialogue line appears in a speaker-attributed
+  speech bubble anchored to the speaking character. The playback presentation is
+  not a fixed subtitle or visual-novel dialogue panel. The transcript remains an
+  optional reading aid, separate from the cinematic presentation.
+
+## Development cycle
+
+For every technical change, use these skills in order:
+
+1. **Design:** use `codebase-design` to choose the module, interface and seam.
+2. **Implement:** use `implement` to make the change, agree on test seams, and
+   follow TDD where practical.
+3. **Review:** use `code-review` for separate standards and spec reviews; resolve
+   findings before finishing or report any that remain open.
+
+The primary agent owns design, implementation, tests and browser validation.
+The `code-review` skill may use read-only review subagents; they do not implement
+changes or own the task.
+
 ## Modeling and animation
 
 - Create and edit geometry, materials, textures, groups, pivots, rigs, variants

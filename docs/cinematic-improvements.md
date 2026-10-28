@@ -122,13 +122,17 @@ is no longer blocked on Blockbench.
 
 ## 8. Presentation
 
-- [x] Replace visible floating speech/emoji bubbles with stable subtitles.
+- [x] Present every dialogue line in a speaker-attributed bubble anchored to the
+  speaking character; playback dialogue is not a fixed subtitle panel.
+  `tests/cinematic.cjs` checks all 12 chapters for speaker/text attribution,
+  deterministic placement and viewport bounds at 1440×900 and 390×844; quiet
+  beats hide the bubble.
 - [x] Fade controls during playback; restore them on interaction/keyboard focus.
 - [x] Reduce permanent scrims; retain transcript and reduced-motion support.
 - [x] Replace the former emoji expressiveness with richer physical acting.
   Grounded approach, shared holds, release/re-grip, neck-limited task glances,
-  wind bracing, hesitation and differentiated conversational gestures replace
-  the old decorative bubble layer (now removed from JS and HTML).
+  wind bracing, hesitation and differentiated conversational gestures carry
+  emotion; dialogue bubbles show only speaker-attributed spoken lines.
 
 ## 9. Lighting and sound
 
@@ -148,12 +152,11 @@ is no longer blocked on Blockbench.
 
 - [x] Extract camera/light direction into `film-direction.js` and audio into
   `soundscape.js`, retaining the static local stack.
-- [x] Cache group-to-mesh lookups and stop per-frame floating-bubble layout work.
+- [x] Cache group-to-mesh lookups and keep speech-bubble layout deterministic.
 - [x] Add meaningful browser regressions in `tests/cinematic.cjs`.
-- [x] Extract screenplay, actor tracks and subtitle/control logic into focused
-  modules; remove unused bubble-projection compatibility code.
-  `screenplay.js`, `actor-performance.js`, `presentation.js`, `story-cues.js`.
-  Exact dialogue/timing hash preserved; bubble projection/obstacle code removed.
+- [x] Extract screenplay, actor tracks and speech-bubble/control logic into
+  focused modules: `screenplay.js`, `actor-performance.js`, `presentation.js`,
+  `story-cues.js` and `speech-bubble-layout.js`. Preserve exact dialogue/timing.
 - [x] Cache remaining repeated rig references and reduce frame-loop allocations.
   Cached plant soil/wrap and flower-nameplate pivots, attachment hands and progress
   element; reused contact/laptop vector scratch space. Deterministic QA passed.
@@ -171,9 +174,9 @@ is no longer blocked on Blockbench.
 
 - Six Python server tests passed: `python3 -m unittest discover -s tests -v`.
 - JS syntax checks and `git diff --check` passed.
-- `tests/cinematic.cjs` passed in Chromium: dialogue bounds, deterministic visible
-  poses on nonsequential seeks, ambient clocks, embrace boundary, stationary storm
-  pots, late tape cue, final line/card, subtitle bounds, sound toggles, controls,
+- `tests/cinematic.cjs` passed in Chromium: dialogue bubble visibility/bounds,
+  deterministic poses on nonsequential seeks, ambient clocks, embrace boundary,
+  stationary storm pots, late tape cue, final line/card, sound toggles, controls,
   ending hold and reduced-motion camera. No page errors or loader asset warnings.
 - Desktop 1440×900 and mobile 390×844 screenshots were captured and selected
   images inspected. The final lateral storm-camera adjustment was checked by

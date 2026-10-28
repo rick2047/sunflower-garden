@@ -6,6 +6,7 @@ import { Soundscape } from './soundscape.js';
 import { CHAPTERS as CH, STORY_DURATION as storyDuration, capturesFor, dialogueAt } from './screenplay.js';
 import { JOY_APPROACH, STORY_CUES } from './story-cues.js';
 import { createPresentation } from './presentation.js';
+import { layoutSpeechBubble } from './speech-bubble-layout.js';
 
 /* Taller Than Us — a short film about one summer, told through a balcony garden.
    The garden is visual subtext; the relationship lives in their imagined dialogue.
@@ -184,6 +185,7 @@ const S = {
   stage: null, door: null, stageLamp: null, roomLight: null, doorAngle: 0,
   laptopScreen: null, laptopKeyboard: null, laptopHome: null, laptopMode: 'hidden',
   models: [], assetWarnings: [], filmCard: null,
+  bubbleLayout: null, bubbleSize: null, bubbleUpdateCount: 0,
   performers: null, performance: { joy: {}, kneel: {}, contacts: {} },
 };
 
@@ -213,6 +215,7 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
+  S.bubbleSize = presentation.measureDialogue();
   if (S.ready) { applyState(S.chapter, S.t); renderer.render(scene, camera); }
 });
 
@@ -250,7 +253,10 @@ soundBtn.onclick = async () => {
 };
 
 function updateDialogue() {
-  presentation.updateDialogue(dialogueAt(S.chapter, S.t));
+  const d = dialogueAt(S.chapter, S.t);
+  if (presentation.updateDialogue(d) && d.phase === 'line') {
+    S.bubbleSize = presentation.measureDialogue();
+  }
 }
 
 function updateCaption() {
@@ -270,6 +276,64 @@ function togglePlayback() {
   S.playing = !S.playing;
   setPlayLabel();
   if (S.ready) { applyState(S.chapter, S.t); renderer.render(scene, camera); }
+}
+
+const _dialoguePoint = new THREE.Vector3();
+function projectDialogueHead(name) {
+  const isParesh = name === 'Paresh';
+  const character = isParesh ? S.paresh : S.anshita;
+  const anchor = S.rig?.base?.[isParesh ? 'pHeadAnchor' : 'aHeadAnchor'];
+  if (!character || !anchor) return null;
+  camera.updateMatrixWorld(true);
+  character.updateWorldMatrix(true, false);
+  _dialoguePoint.fromArray(anchor);
+  const body = S.rig[isParesh ? 'pBody' : 'aBody'];
+  const bodyBase = S.rig.base[isParesh ? 'pBody' : 'aBody'];
+  _dialoguePoint.y += body.position.y - bodyBase.position[1];
+  _dialoguePoint.y += 4;
+  character.localToWorld(_dialoguePoint);
+  _dialoguePoint.project(camera);
+  if (_dialoguePoint.z < -1 || _dialoguePoint.z > 1) return null;
+  return {
+    x: (_dialoguePoint.x * 0.5 + 0.5) * innerWidth,
+    y: (-_dialoguePoint.y * 0.5 + 0.5) * innerHeight,
+  };
+}
+
+function layoutDialogueBubble(ch, storyT) {
+  S.bubbleUpdateCount++;
+  const d = dialogueAt(ch, storyT);
+  const anchor = d.phase === 'line' ? projectDialogueHead(d.speaker) : null;
+  if (!anchor) {
+    S.bubbleLayout = null;
+    presentation.positionDialogue(null);
+    return;
+  }
+
+  const compact = innerWidth <= 620;
+  const otherHead = projectDialogueHead(d.listener);
+  const obstacles = otherHead ? [{
+    left: otherHead.x - (compact ? 24 : 32),
+    right: otherHead.x + (compact ? 24 : 32),
+    top: otherHead.y - (compact ? 25 : 32),
+    bottom: otherHead.y + (compact ? 20 : 25),
+  }] : [];
+  const layout = layoutSpeechBubble({
+    anchor,
+    size: S.bubbleSize || presentation.measureDialogue(),
+    viewport: { width: innerWidth, height: innerHeight },
+    obstacles,
+    safeArea: { top: 86, right: 12, bottom: compact ? 150 : 118, left: 12 },
+    gap: compact ? 15 : 18,
+  });
+  presentation.positionDialogue(layout);
+  S.bubbleLayout = {
+    ...layout,
+    anchor,
+    speaker: d.speaker,
+    chapter: ch,
+    time: storyT,
+  };
 }
 
 function updateFilmCard(ch, seconds) {
@@ -1315,7 +1379,7 @@ function applyState(ch, t) {
 
   updateCaption();
   updateFilmCard(ch, storyT);
-  // Stable subtitles require no projected-head traversal or per-frame DOM reads.
+  layoutDialogueBubble(ch, storyT);
   sound.update(c, storyT, S.playing && !S.frozen && !document.hidden);
   const progress = clamp(storyT / c.dur, 0, 1) * 100;
   barEl.style.width = progress.toFixed(2) + '%';
@@ -1386,7 +1450,8 @@ function state() {
     actions: { doorAngle: S.doorAngle, laptopMode: S.laptopMode,
       timeSuper: timeSuper.style.visibility === 'visible', roomLight: S.roomLight?.intensity ?? 0 },
     dialogue: dialogueAt(S.chapter, S.t),
-    bubbleLayout: {}, bubbleUpdateCount: 0, filmCard: S.filmCard,
+    bubbleLayout: S.bubbleLayout ? { ...S.bubbleLayout, anchor: { ...S.bubbleLayout.anchor } } : null,
+    bubbleUpdateCount: S.bubbleUpdateCount, filmCard: S.filmCard,
     frame: renderer.info.render.frame, reducedMotion: reduced, assetWarnings: S.assetWarnings,
   };
 }

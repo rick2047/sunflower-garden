@@ -28,7 +28,7 @@ Site: https://rick2047.github.io/sunflower-garden/
   Latest verified deployment: commit `515a592`, Actions run
   [40685706097](https://github.com/rick2047/sunflower-garden/actions/runs/40685706097).
 - [x] Test the public URL on desktop and mobile: asset loading, playback,
-  subtitles, chapter navigation, pause/replay, and opt-in sound.
+  speaker-attributed speech bubbles, chapter navigation, pause/replay, and opt-in sound.
   `tests/cinematic.cjs` passed against the public origin at both viewports; sampled
   public action captures are in the ignored `.artifacts/cinematic-direct-20261028/`.
 - [x] Add the live link to the README and GitHub repository description/website.

@@ -1,4 +1,4 @@
-/* Screenplay data, deterministic dialogue pacing and subtitle-time lookup.
+/* Screenplay data, deterministic dialogue pacing and dialogue-time lookup.
    Extracted verbatim from garden.js: the 12 chapter texts and 399 s runtime
    remain the single source of truth for the film and the QA hooks. */
 const line = (speaker, emotion, text, pauseAfter = 0) => ({ speaker, emotion, text, pauseAfter });
@@ -158,7 +158,7 @@ export function capturesFor(chapter) {
 /**
  * Resolve the line that owns `seconds`, plus the surrounding quiet beats.
  * Pure function of (chapter, time); no DOM and no accumulated state, so seeks
- * and replay sample the same subtitle.
+ * and replay sample the same spoken line.
  */
 export function dialogueAt(ch, seconds, chapters = CHAPTERS) {
   const c = chapters[ch];

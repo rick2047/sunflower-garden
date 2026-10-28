@@ -4,7 +4,9 @@
 
 A 6-minute 39-second animated story about Paresh, Anshita, and a balcony garden.
 Use **Play** to watch, **Continue** to advance through dialogue, or the chapter
-dots to jump between scenes. Sound is optional; enable it with **Sound off**.
+dots to jump between scenes. Dialogue appears in character speech bubbles; the
+transcript is available as a separate reading aid. Sound is optional; enable it
+with **Sound off**.
 
 A Three.js garden story served as static HTML/JavaScript. Geometry, materials,
 rigs and animation can be created or refined directly in code. Existing
@@ -50,7 +52,7 @@ python3 -m unittest discover -s tests -v
 ```
 
 These Python tests cover the server. Browser regression checks cover nonsequential
-seeking, motion continuity, ambient clocks, subtitle bounds, sound controls,
+seeking, motion continuity, ambient clocks, speech-bubble bounds, sound controls,
 pause/replay, the ending hold, and reduced motion:
 
 ```sh
@@ -75,7 +77,7 @@ The workflow checks the story modules and Python server tests before deployment.
 - `screenplay.js`: chapter data and dialogue timing.
 - `story-cues.js`: shared action/audio cues.
 - `actor-performance.js`: grounded movement, reach and acting accents.
-- `presentation.js`: subtitles, transcript and controls.
+- `presentation.js`: speech bubble, transcript and controls.
 - `film-direction.js` and `soundscape.js`: shots, lighting and optional audio.
 
 Run the pure-module checks with `node tests/story-modules.mjs`. Third-party
