@@ -1,5 +1,11 @@
 # Sunflower Garden
 
+**[Watch Taller Than Us](https://rick2047.github.io/sunflower-garden/)**
+
+A 6-minute 39-second animated story about Paresh, Anshita, and a balcony garden.
+Use **Play** to watch, **Continue** to advance through dialogue, or the chapter
+dots to jump between scenes. Sound is optional; enable it with **Sound off**.
+
 A Three.js garden story served as static HTML/JavaScript. Geometry, materials,
 rigs and animation can be created or refined directly in code. Existing
 Blockbench assets remain supported through the local loader; Blockbench is
@@ -58,6 +64,24 @@ editorial shot tracks and light palettes; `soundscape.js` provides optional loca
 Web Audio ambience and short foley cues. Sound starts only after pressing **Sound
 off**, and pauses with the story. Controls fade during playback and return on
 pointer interaction or keyboard focus. Dialogue remains available in the transcript.
+
+## Publishing and source modules
+
+GitHub Pages deploys `main` through `.github/workflows/pages.yml`. Only root
+HTML/CSS/JavaScript files and `models/`, `vendor/`, and optional `assets/` enter
+the site artifact; tests, agent configuration and local evidence are excluded.
+The workflow checks the story modules and Python server tests before deployment.
+
+- `screenplay.js`: chapter data and dialogue timing.
+- `story-cues.js`: shared action/audio cues.
+- `actor-performance.js`: grounded movement, reach and acting accents.
+- `presentation.js`: subtitles, transcript and controls.
+- `film-direction.js` and `soundscape.js`: shots, lighting and optional audio.
+
+Run the pure-module checks with `node tests/story-modules.mjs`. Third-party
+notices for Three.js r160 and three-blockbench 0.1.0 are included in
+[`vendor/THIRD_PARTY_LICENSES.txt`](vendor/THIRD_PARTY_LICENSES.txt).
+Publishing progress is tracked in [`docs/publishing-checklist.md`](docs/publishing-checklist.md).
 
 ## Reusable OpenCode agents
 
