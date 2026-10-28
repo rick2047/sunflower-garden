@@ -374,12 +374,6 @@ async page => {
         drawCalls: g.renderer.info.render.calls, triangles: g.renderer.info.render.triangles,
         assetWarnings: g.state().assetWarnings };
     });
-    for (const [width,height] of [[1440,900],[390,844]]) {
-      await page.setViewportSize({width,height});
-      await page.evaluate(() => window.__garden.seek(7,12.5));
-      const layout = await page.locator('#speech-bubble').boundingBox();
-      assert(layout.x >= 0 && layout.x + layout.width <= width && layout.y + layout.height <= height, 'Speech bubble overflow');
-    }
     // The character-attributed bubble remains in bounds on every dialogue turn.
     for (const [width,height] of [[1440,900],[390,844]]) {
       await page.setViewportSize({width,height});
