@@ -13,12 +13,15 @@ export function createSpeechBubble(document = globalThis.document) {
   const speaker = byId(document, 'bubble-speaker');
   const text = byId(document, 'bubble-text');
   const announcement = byId(document, 'announcement');
-  let dialogueKey = '';
+  let previousChapter = -1, previousIndex = -2, previousText = '', previousReaction = null;
 
   function update(d) {
-    const key = `${d.chapter}:${d.index}:${d.text}:${d.reaction}`;
-    if (key === dialogueKey) return false;
-    dialogueKey = key;
+    if (d.chapter === previousChapter && d.index === previousIndex
+        && d.text === previousText && d.reaction === previousReaction) return false;
+    previousChapter = d.chapter;
+    previousIndex = d.index;
+    previousText = d.text;
+    previousReaction = d.reaction;
     speaker.textContent = d.speaker || '';
     text.textContent = d.text;
     bubble.dataset.speaker = d.speaker || '';
@@ -43,9 +46,11 @@ export function createSpeechBubble(document = globalThis.document) {
     bubble.classList.add('visible');
   }
 
-  function measure() {
+  function measure(result = {}) {
     const { width, height } = bubble.getBoundingClientRect();
-    return { width, height };
+    result.width = width;
+    result.height = height;
+    return result;
   }
 
   return { update, position, measure };
@@ -78,7 +83,7 @@ export function createPresentation({
 
   function positionDialogue(layout) { speechBubble.position(layout); }
 
-  function measureDialogue() { return speechBubble.measure(); }
+  function measureDialogue(result) { return speechBubble.measure(result); }
 
   function updateCaption(index) {
     const chapter = chapters[index];

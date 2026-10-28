@@ -74,6 +74,17 @@ const shortViewport = layoutSpeechBubble({
 });
 assert.deepEqual([shortViewport.left, shortViewport.top], [60, 50],
   'bubble centers safely when fixed UI insets exceed a short viewport');
+const reusableLayout = {};
+const reusableRect = layoutSpeechBubble({
+  anchor: { x: 195, y: 280 }, size: { width: 220, height: 88 },
+  viewport: { width: 390, height: 844 },
+}, reusableLayout).rect;
+assert.equal(layoutSpeechBubble({
+  anchor: { x: 210, y: 300 }, size: { width: 220, height: 88 },
+  viewport: { width: 390, height: 844 },
+}, reusableLayout), reusableLayout, 'caller can reuse the layout result');
+assert.equal(reusableLayout.left, 100, 'reused layout updates its position');
+assert.equal(reusableLayout.rect, reusableRect, 'reusing layout does not replace its rectangle');
 
 const steps = foleyCuesFor('bloom');
 assert.equal(steps.length, 4);

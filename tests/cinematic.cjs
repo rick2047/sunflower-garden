@@ -383,40 +383,45 @@ async page => {
     // The character-attributed bubble remains deterministic across every chapter.
     for (const [width,height] of [[1440,900],[390,844]]) {
       await page.setViewportSize({width,height});
-      const bubbles = await page.evaluate(() => {
+      const { bubbles, expectedCount } = await page.evaluate(() => {
         const g = window.__garden;
         const bubble = document.getElementById('speech-bubble');
         const results = [];
+        let expectedCount = 0;
         for (let chapter = 0; chapter < g.chapters.length; chapter++) {
-          const line = g.chapters[chapter].dialogue[0];
-          const time = (line.start + line.end) / 2;
-          g.seek(chapter, time);
-          const state = g.state();
-          const rect = bubble.getBoundingClientRect();
-          const first = state.bubbleLayout && { left: state.bubbleLayout.left,
-            top: state.bubbleLayout.top, width: state.bubbleLayout.width,
-            height: state.bubbleLayout.height, speaker: state.bubbleLayout.speaker,
-            anchor: state.bubbleLayout.anchor, tailOffset: state.bubbleLayout.tailOffset,
-            placement: state.bubbleLayout.placement };
-          let repeated = null;
-          if ([0, 6, 11].includes(chapter)) {
-            g.seek(0, 8);
+          const lines = g.chapters[chapter].dialogue;
+          expectedCount += lines.length;
+          for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            const line = lines[lineIndex];
+            const time = (line.start + line.end) / 2;
             g.seek(chapter, time);
-            repeated = g.state().bubbleLayout;
+            const state = g.state();
+            const rect = bubble.getBoundingClientRect();
+            const first = state.bubbleLayout && { left: state.bubbleLayout.left,
+              top: state.bubbleLayout.top, width: state.bubbleLayout.width,
+              height: state.bubbleLayout.height, speaker: state.bubbleLayout.speaker,
+              anchor: state.bubbleLayout.anchor, tailOffset: state.bubbleLayout.tailOffset,
+              placement: state.bubbleLayout.placement };
+            let repeated = null;
+            if (lineIndex === 0 && [0, 6, 11].includes(chapter)) {
+              g.seek(0, 8);
+              g.seek(chapter, time);
+              repeated = g.state().bubbleLayout;
+            }
+            results.push({ chapter, lineIndex, dialogue: g.dialogue(), first, repeated,
+              rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
+                width: rect.width, height: rect.height },
+              visible: bubble.classList.contains('visible'), speaker: bubble.dataset.speaker,
+              placement: bubble.dataset.placement,
+              tailOffset: parseFloat(getComputedStyle(bubble).getPropertyValue('--bubble-tail-offset')),
+              speakerText: document.getElementById('bubble-speaker').textContent,
+              text: document.getElementById('bubble-text').textContent,
+              announcement: document.getElementById('announcement').textContent });
           }
-          results.push({ chapter, dialogue: g.dialogue(), first, repeated,
-            rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom,
-              width: rect.width, height: rect.height },
-            visible: bubble.classList.contains('visible'), speaker: bubble.dataset.speaker,
-            placement: bubble.dataset.placement,
-            tailOffset: parseFloat(getComputedStyle(bubble).getPropertyValue('--bubble-tail-offset')),
-            speakerText: document.getElementById('bubble-speaker').textContent,
-            text: document.getElementById('bubble-text').textContent,
-            announcement: document.getElementById('announcement').textContent });
         }
-        return results;
+        return { bubbles: results, expectedCount };
       });
-      assert(bubbles.length === 12, 'Not every chapter has a dialogue bubble sample');
+      assert(bubbles.length === expectedCount, 'Not every dialogue turn has a speech-bubble sample');
       for (const sample of bubbles) {
         const { rect, dialogue, first, repeated } = sample;
         assert(sample.visible, `Speech bubble hidden in chapter ${sample.chapter}`);

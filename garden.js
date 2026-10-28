@@ -185,7 +185,7 @@ const S = {
   stage: null, door: null, stageLamp: null, roomLight: null, doorAngle: 0,
   laptopScreen: null, laptopKeyboard: null, laptopHome: null, laptopMode: 'hidden',
   models: [], assetWarnings: [], filmCard: null,
-  bubbleLayout: null, bubbleSize: null, bubbleUpdateCount: 0,
+  bubbleLayout: null, bubbleSize: { width: 0, height: 0 }, bubbleUpdateCount: 0,
   performers: null, performance: { joy: {}, kneel: {}, contacts: {} },
 };
 
@@ -215,7 +215,7 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
-  S.bubbleSize = presentation.measureDialogue();
+  presentation.measureDialogue(S.bubbleSize);
   if (S.ready) { applyState(S.chapter, S.t); renderer.render(scene, camera); }
 });
 
@@ -252,16 +252,15 @@ soundBtn.onclick = async () => {
   }
 };
 
-function updateDialogue() {
-  const d = dialogueAt(S.chapter, S.t);
+function updateDialogue(d = dialogueAt(S.chapter, S.t)) {
   if (presentation.updateDialogue(d) && d.phase === 'line') {
-    S.bubbleSize = presentation.measureDialogue();
+    presentation.measureDialogue(S.bubbleSize);
   }
 }
 
-function updateCaption() {
+function updateCaption(d) {
   presentation.updateCaption(S.chapter);
-  updateDialogue();
+  updateDialogue(d);
 }
 
 function setPlayLabel() {
@@ -279,11 +278,25 @@ function togglePlayback() {
 }
 
 const _dialoguePoint = new THREE.Vector3();
-function projectDialogueHead(name) {
+const _dialogueAnchor = { x: 0, y: 0 };
+const _dialogueListenerAnchor = { x: 0, y: 0 };
+const _dialogueObstacle = { left: 0, right: 0, top: 0, bottom: 0 };
+const _dialogueObstacles = [_dialogueObstacle];
+const _dialogueViewport = { width: innerWidth, height: innerHeight };
+const _dialogueSafeArea = { top: 86, right: 12, bottom: 118, left: 12 };
+const _bubbleLayout = {
+  rect: { left: 0, top: 0, right: 0, bottom: 0 },
+  anchor: { x: 0, y: 0 }, speaker: '', chapter: 0, time: 0,
+};
+const _bubbleLayoutInput = {
+  anchor: _dialogueAnchor, size: S.bubbleSize, viewport: _dialogueViewport,
+  obstacles: _dialogueObstacles, safeArea: _dialogueSafeArea, gap: 18,
+};
+function projectDialogueHead(name, target) {
   const isParesh = name === 'Paresh';
   const character = isParesh ? S.paresh : S.anshita;
   const anchor = S.rig?.base?.[isParesh ? 'pHeadAnchor' : 'aHeadAnchor'];
-  if (!character || !anchor) return null;
+  if (!character || !anchor) return false;
   camera.updateMatrixWorld(true);
   character.updateWorldMatrix(true, false);
   _dialoguePoint.fromArray(anchor);
@@ -293,47 +306,42 @@ function projectDialogueHead(name) {
   _dialoguePoint.y += 4;
   character.localToWorld(_dialoguePoint);
   _dialoguePoint.project(camera);
-  if (_dialoguePoint.z < -1 || _dialoguePoint.z > 1) return null;
-  return {
-    x: (_dialoguePoint.x * 0.5 + 0.5) * innerWidth,
-    y: (-_dialoguePoint.y * 0.5 + 0.5) * innerHeight,
-  };
+  if (_dialoguePoint.z < -1 || _dialoguePoint.z > 1) return false;
+  target.x = (_dialoguePoint.x * 0.5 + 0.5) * innerWidth;
+  target.y = (-_dialoguePoint.y * 0.5 + 0.5) * innerHeight;
+  return true;
 }
 
-function layoutDialogueBubble(ch, storyT) {
+function layoutDialogueBubble(ch, storyT, d) {
   S.bubbleUpdateCount++;
-  const d = dialogueAt(ch, storyT);
-  const anchor = d.phase === 'line' ? projectDialogueHead(d.speaker) : null;
-  if (!anchor) {
+  if (d.phase !== 'line' || !projectDialogueHead(d.speaker, _dialogueAnchor)) {
     S.bubbleLayout = null;
     presentation.positionDialogue(null);
     return;
   }
 
   const compact = innerWidth <= 620;
-  const otherHead = projectDialogueHead(d.listener);
-  const obstacles = otherHead ? [{
-    left: otherHead.x - (compact ? 24 : 32),
-    right: otherHead.x + (compact ? 24 : 32),
-    top: otherHead.y - (compact ? 25 : 32),
-    bottom: otherHead.y + (compact ? 20 : 25),
-  }] : [];
-  const layout = layoutSpeechBubble({
-    anchor,
-    size: S.bubbleSize || presentation.measureDialogue(),
-    viewport: { width: innerWidth, height: innerHeight },
-    obstacles,
-    safeArea: { top: 86, right: 12, bottom: compact ? 150 : 118, left: 12 },
-    gap: compact ? 15 : 18,
-  });
-  presentation.positionDialogue(layout);
-  S.bubbleLayout = {
-    ...layout,
-    anchor,
-    speaker: d.speaker,
-    chapter: ch,
-    time: storyT,
-  };
+  if (projectDialogueHead(d.listener, _dialogueListenerAnchor)) {
+    _dialogueObstacle.left = _dialogueListenerAnchor.x - (compact ? 24 : 32);
+    _dialogueObstacle.right = _dialogueListenerAnchor.x + (compact ? 24 : 32);
+    _dialogueObstacle.top = _dialogueListenerAnchor.y - (compact ? 25 : 32);
+    _dialogueObstacle.bottom = _dialogueListenerAnchor.y + (compact ? 20 : 25);
+    _dialogueObstacles.length = 1;
+  } else {
+    _dialogueObstacles.length = 0;
+  }
+  _dialogueViewport.width = innerWidth;
+  _dialogueViewport.height = innerHeight;
+  _dialogueSafeArea.bottom = compact ? 150 : 118;
+  _bubbleLayoutInput.gap = compact ? 15 : 18;
+  layoutSpeechBubble(_bubbleLayoutInput, _bubbleLayout);
+  _bubbleLayout.anchor.x = _dialogueAnchor.x;
+  _bubbleLayout.anchor.y = _dialogueAnchor.y;
+  _bubbleLayout.speaker = d.speaker;
+  _bubbleLayout.chapter = ch;
+  _bubbleLayout.time = storyT;
+  presentation.positionDialogue(_bubbleLayout);
+  S.bubbleLayout = _bubbleLayout;
 }
 
 function updateFilmCard(ch, seconds) {
@@ -715,6 +723,7 @@ function applyState(ch, t) {
   const c = CH[ch];
   const act = c.action;
   const storyT = t;
+  const d = dialogueAt(ch, storyT);
   S.performance.contacts = {};
   S.performance.joy.paresh = null;
   S.performance.joy.anshita = null;
@@ -1066,7 +1075,6 @@ function applyState(ch, t) {
     // Body yaw is applied before the contact solve: the arm is a child of the
     // torso, so solving first and turning the torso afterwards would publish a
     // hand position the renderer never reaches.
-    const d = dialogueAt(ch, storyT);
     const age = d.start === null ? 0 : storyT - d.start;
     const emphasis = d.speaker ? (reduced ? 1 : smooth(age / 0.45) * smooth((d.end - storyT) / 0.5)) : 0;
     const sober = ch >= 4 && ch <= 8;
@@ -1377,9 +1385,9 @@ function applyState(ch, t) {
     b.rotation.y = Math.sin(bt * 0.8 + s);
   });
 
-  updateCaption();
+  updateCaption(d);
   updateFilmCard(ch, storyT);
-  layoutDialogueBubble(ch, storyT);
+  layoutDialogueBubble(ch, storyT, d);
   sound.update(c, storyT, S.playing && !S.frozen && !document.hidden);
   const progress = clamp(storyT / c.dur, 0, 1) * 100;
   barEl.style.width = progress.toFixed(2) + '%';

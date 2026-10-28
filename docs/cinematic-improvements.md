@@ -124,7 +124,7 @@ is no longer blocked on Blockbench.
 
 - [x] Present every dialogue line in a speaker-attributed bubble anchored to the
   speaking character; playback dialogue is not a fixed subtitle panel.
-  `tests/cinematic.cjs` checks all 12 chapters for speaker/text attribution,
+  `tests/cinematic.cjs` checks every dialogue turn for speaker/text attribution,
   deterministic placement and viewport bounds at 1440×900 and 390×844; quiet
   beats hide the bubble.
 - [x] Fade controls during playback; restore them on interaction/keyboard focus.
@@ -152,7 +152,8 @@ is no longer blocked on Blockbench.
 
 - [x] Extract camera/light direction into `film-direction.js` and audio into
   `soundscape.js`, retaining the static local stack.
-- [x] Cache group-to-mesh lookups and keep speech-bubble layout deterministic.
+- [x] Cache group-to-mesh lookups and keep speech-bubble layout deterministic
+  without per-frame layout allocations.
 - [x] Add meaningful browser regressions in `tests/cinematic.cjs`.
 - [x] Extract screenplay, actor tracks and speech-bubble/control logic into
   focused modules: `screenplay.js`, `actor-performance.js`, `presentation.js`,
