@@ -15,8 +15,8 @@ Three.js is the default workspace for modeling, rigging, animation and rendering
 - Keep model construction and reusable rig/animation logic in focused modules.
   Evaluate story animation deterministically so seeking and replay agree. Check
   contact, planted feet, transitions, and resource disposal for affected objects.
-- Give shared source/assets to one implementation owner at a time. Inspect the
-  baseline and preserve unrelated user edits before making changes.
+- The primary agent owns source, asset, and editor changes for the task. Inspect
+  the baseline and preserve unrelated user edits before making changes.
 
 Preserve the local runtime stack. Model files belong in Git; browser captures
 and run reports do not.
@@ -27,25 +27,20 @@ and run reports do not.
   before finishing a task. This is standing authorization for local commits;
   follow any explicit request to defer commits. Push only when requested.
 - Stage explicit task files or hunks, preserve unrelated user changes, and report
-  commit hashes and any changes left uncommitted. In delegated runs the coordinator
-  owns commits; implementation workers hand back validated changes.
+  commit hashes and any changes left uncommitted.
 - For cinematic improvement work, read `docs/cinematic-improvements.md`. Update
   its checklist in the same milestone as the implementation. Mark completed work
   with validation evidence; keep partial work unchecked with remaining scope.
 
 ## Resource ownership
 
-Check host memory/CPU before heavy work. Use one QA browser at a time, freeze
-idle WebGL playback, and have reviewers consume saved images. Every agent owns
-cleanup of the temporary processes/browser sessions it starts, including after
-failures and interrupted handoffs. Close them when no longer needed and report
-cleanup before finishing. Preserve unrelated processes, shared tool/MCP
-services and the intentionally running preview server. Confirm ownership before
-stopping inherited processes; never blanket-kill Chromium or other process names.
-
-For delegated implementation or iterative browser review, read
-`docs/iteration-workflow.md`. Use its handoff and evidence contracts. Parallelize
-reviews, but give shared source files to only one implementation agent at a time.
+The primary agent handles implementation, validation, and browser review directly.
+Check host memory/CPU before heavy work. Use one QA browser at a time and freeze
+idle WebGL playback. The primary agent owns cleanup of temporary processes and
+browser sessions it starts, including after failures. Close them when no longer
+needed. Preserve unrelated processes, shared tool/MCP services, and the intentionally
+running preview server. Confirm ownership before stopping inherited processes;
+never blanket-kill Chromium or other process names.
 
 Treat narrative details as undecided unless the user supplies an approved brief
 for the current task. Infrastructure work does not authorize story changes.

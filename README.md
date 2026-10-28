@@ -83,34 +83,5 @@ notices for Three.js r160 and three-blockbench 0.1.0 are included in
 [`vendor/THIRD_PARTY_LICENSES.txt`](vendor/THIRD_PARTY_LICENSES.txt).
 Publishing progress is tracked in [`docs/publishing-checklist.md`](docs/publishing-checklist.md).
 
-## Reusable OpenCode agents
-
-Requires OpenCode V2. Project-local definitions live in `.opencode/agents/`:
-
-- `iteration-coordinator`: bounded rounds, handoffs, review consolidation, and
-  optional validated Git checkpoints; usable as a primary agent or subagent.
-- `implementer`: scoped Three.js modeling, animation and runtime integration.
-- `browser-qa`: text-based Playwright CLI checks and screenshot capture.
-- `visual-reviewer`: read-only desktop/mobile screenshot review; requires an
-  image-capable model.
-- `narrative-reviewer`: read-only review against a supplied, approved brief;
-  otherwise reports `NOT_ASSESSED`.
-
-Agent behaviour and permissions are defined directly in these Markdown files.
-Use **`docs/iteration-workflow.md`** for bounded implementation rounds and shared
-browser evidence. There is no separate agent-setup checker or model audit.
-
-Normally keep Build as the main agent and ask it to launch
-`iteration-coordinator` as a subagent. The project's
-`experimental.subagent_depth: 2` permits Build → coordinator → worker, while
-worker permissions prevent another delegation level.
-
-Example request (starts a bounded run only when explicitly submitted):
-
-> Use iteration-coordinator for at most three rounds. Goal: [observable change].
-> Scope: [allowed files]. Keep story content unchanged. Use desktop 1440x900 and
-> mobile 390x844. Capture evidence under .artifacts/example-run/. Do not commit.
-
-Only one implementer edits shared files; screenshot/content reviews run in
-parallel against QA's captures. Captures, run reports, and local logs are ignored
-by Git. Authored models, vendor files, and reusable definitions are tracked.
+Local browser captures and reports are ignored by Git; authored models and vendor
+files are tracked.

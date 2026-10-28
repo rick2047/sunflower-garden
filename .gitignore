@@ -4,7 +4,7 @@
 !.env.example
 .local/
 
-# Browser evidence and iteration reports
+# Local browser evidence and reports
 .artifacts/
 .playwright-cli/
 test-results/
