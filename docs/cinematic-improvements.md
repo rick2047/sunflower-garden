@@ -206,6 +206,11 @@ final:
 
 ## Round 2 implementation (`cinematic-publish-20261028`, round 1)
 
+**Historical handoff below:** its “evidence required” notes were resolved or
+superseded by the direct completion pass at the top of this file. Outstanding
+unchecked subjective items above remain open; do not interpret those old notes as
+the current validation status.
+
 Scope: `garden.js`, `film-direction.js`, `tests/cinematic.cjs`, this checklist.
 No model, loader, vendor, screenplay, cast or publishing file changed.
 

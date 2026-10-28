@@ -6,13 +6,15 @@ GitHub CLI authentication was verified for `rick2047`.
 Public repository: https://github.com/rick2047/sunflower-garden
 Site: https://rick2047.github.io/sunflower-garden/
 
-- [ ] Finish and validate the cinematic work tracked in
+- [x] Finish and validate the cinematic work tracked in
   [cinematic-improvements.md](cinematic-improvements.md).
-  Validated implementation milestone `b442885` is published; remaining subjective
-  full-film/audio review and strict insert-visibility polish are tracked there.
+  Published milestones `b442885` and `515a592`; remaining subjective full-film,
+  audio and strict insert-visibility review is explicitly left open there.
 - [x] Check Git remotes and repository-name availability; preserve existing remotes.
-- [ ] Verify project-relative URLs work under `/sunflower-garden/`, including
+- [x] Verify project-relative URLs work under `/sunflower-garden/`, including
   JavaScript modules, models, textures, and other runtime assets.
+  The public Pages URL returned HTTP 200 for all 40 tracked runtime JS/model/vendor
+  paths. The public browser regression suite also passed on desktop and mobile.
 - [x] Review tracked files for credentials, private material, and asset attribution
   requirements before publishing. Keep local reports and browser captures excluded.
   Common credential/private-key patterns found no matches across Git history;
@@ -21,14 +23,19 @@ Site: https://rick2047.github.io/sunflower-garden/
 - [x] Create the public GitHub repository using the authenticated GitHub CLI.
 - [x] Add a GitHub Pages deployment workflow that publishes only the static site
   and required runtime assets.
-- [ ] Commit the deployment configuration and push the validated project.
-- [ ] Enable GitHub Pages and confirm the deployment succeeds.
-- [ ] Test the public URL on desktop and mobile: asset loading, playback,
+- [x] Commit the deployment configuration and push the validated project.
+- [x] Enable GitHub Pages and confirm the deployment succeeds.
+  Latest verified deployment: commit `515a592`, Actions run
+  [40685706097](https://github.com/rick2047/sunflower-garden/actions/runs/40685706097).
+- [x] Test the public URL on desktop and mobile: asset loading, playback,
   subtitles, chapter navigation, pause/replay, and opt-in sound.
-- [ ] Add the live link to the README and GitHub repository description/website.
-- [ ] Share the verified public link with the user.
+  `tests/cinematic.cjs` passed against the public origin at both viewports; sampled
+  public action captures are in the ignored `.artifacts/cinematic-direct-20261028/`.
+- [x] Add the live link to the README and GitHub repository description/website.
+- [x] Share the verified public link with the user.
 
-GitHub Pages is configured for Actions with HTTPS enforcement. The implementation
-passed the browser regression suite, pure-module checks and six server tests
-before its first push. Deployment and public-site checks below must pass before
-the site is reported as verified live.
+Verified live: **https://rick2047.github.io/sunflower-garden/**
+
+GitHub Pages is configured for Actions with HTTPS enforcement. The deployment
+workflow runs the pure story-module checks and six Python server tests before
+publishing the explicit static-site allowlist.
