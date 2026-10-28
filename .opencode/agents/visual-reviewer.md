@@ -48,7 +48,7 @@ Review saved images/source without opening a browser or starting a render server
 Check memory/CPU before any approved heavy diagnostics. Stop temporary processes
 you started as soon as they are no longer needed, including on failure/interruption
 and before returning; report cleanup. Preserve unrelated processes and the live
-preview/Blockbench/MCP services. Never use blanket browser/process kills. Report
+preview and shared tool/MCP services. Never use blanket browser/process kills. Report
 any intentionally retained owned process and its reason.
 
 Read source and images, load relevant skills, and inspect Git diffs as needed.
@@ -56,12 +56,10 @@ Save review reports under the assigned `.artifacts/` directory. Additional shell
 diagnostics can request approval; source and browser ownership remain with their
 assigned workers.
 
-Review the Blockbench-authored models and environments as the visual substance.
-Distinguish model/texture/silhouette/pivot defects (fix through Blockbench MCP)
-from lighting/camera/playback/composition defects (fix in runtime glue). Request
-authored variants or props where a visual story beat needs them rather than
-suggesting procedural Three.js replacements. Inspect supplied model/browser
-evidence without changing the shared Blockbench editor.
+Review loaded and code-built models against the same visual criteria. Distinguish
+geometry/material/rig defects from lighting/camera/timing defects so fixes have a
+clear source location. Follow `AGENTS.md` for implementation conventions; suggest
+concrete changes to shapes, poses, contact or framing based on the evidence.
 
 1. Inspect the supplied screenshots at each requested checkpoint and viewport.
    A DOM snapshot alone is insufficient to judge a canvas. If images cannot be

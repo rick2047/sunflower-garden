@@ -1,29 +1,37 @@
 # Project instructions
 
-This is a Blockbench-authored garden experience delivered through static
-HTML/JavaScript. Three.js is runtime glue, not the modeling workspace.
+This is a Three.js garden experience delivered through static HTML/JavaScript.
+Three.js is the default workspace for modeling, rigging, animation and rendering.
 
-## Modeling boundary
+## Modeling and animation
 
-- Use the Blockbench MCP for all model creation and edits: characters, plants,
-  flowers, seeds, pots, tools, repair tape/supports, and environments/set dressing.
-  Reuse existing authored assets where possible and preserve their identity.
-- Most 3D work happens in Blockbench: geometry, textures/material appearance,
-  groups, pivots, growth/damage/repair variants, and reusable animation rigs.
-  Export native `.bbmodel` assets into `models/` and verify them with the existing
-  loader. Keep exports self-contained or include their required textures.
-- Three.js loads and instances these assets, plays/transforms their authored
-  groups, and handles lighting, cameras, atmospheric effects, timeline and UI.
-  Build visible objects and environments in Blockbench rather than constructing
-  replacement geometry in JavaScript or generating `.bbmodel` JSON by hand.
-  Persisting an unchanged MCP export to disk is allowed.
-- Assign one implementer ownership of the shared Blockbench editor and source
-  files at a time. Inspect the current project before changing it; preserve
-  unrelated open projects and user edits. When MCP modeling/export is blocked,
-  report the blocker rather than substitute procedural models.
+- Create and edit geometry, materials, textures, groups, pivots, rigs, variants
+  and animation directly in code. Procedural models, runtime asset modifications,
+  IK/contact constraints and code-authored animation tracks are supported.
+- Reuse existing assets where useful and preserve the characters' visual identity.
+  Existing `.bbmodel` files and their loader remain supported; direct asset-file
+  edits are allowed. Verify modified assets with the actual runtime loader and
+  include required textures. Blockbench is optional, never a prerequisite.
+- Keep model construction and reusable rig/animation logic in focused modules.
+  Evaluate story animation deterministically so seeking and replay agree. Check
+  contact, planted feet, transitions, and resource disposal for affected objects.
+- Give shared source/assets to one implementation owner at a time. Inspect the
+  baseline and preserve unrelated user edits before making changes.
 
 Preserve the local runtime stack. Model files belong in Git; browser captures
 and run reports do not.
+
+## Progress and commits
+
+- Commit completed work regularly: after each coherent, validated milestone and
+  before finishing a task. This is standing authorization for local commits;
+  follow any explicit request to defer commits. Push only when requested.
+- Stage explicit task files or hunks, preserve unrelated user changes, and report
+  commit hashes and any changes left uncommitted. In delegated runs the coordinator
+  owns commits; implementation workers hand back validated changes.
+- For cinematic improvement work, read `docs/cinematic-improvements.md`. Update
+  its checklist in the same milestone as the implementation. Mark completed work
+  with validation evidence; keep partial work unchecked with remaining scope.
 
 ## Resource ownership
 
@@ -31,7 +39,7 @@ Check host memory/CPU before heavy work. Use one QA browser at a time, freeze
 idle WebGL playback, and have reviewers consume saved images. Every agent owns
 cleanup of the temporary processes/browser sessions it starts, including after
 failures and interrupted handoffs. Close them when no longer needed and report
-cleanup before finishing. Preserve unrelated processes, shared Blockbench/MCP
+cleanup before finishing. Preserve unrelated processes, shared tool/MCP
 services and the intentionally running preview server. Confirm ownership before
 stopping inherited processes; never blanket-kill Chromium or other process names.
 

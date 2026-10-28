@@ -46,7 +46,7 @@ time; seek/freeze while inspecting rather than leave software-WebGL autoplay
 running idle. Close that session after evidence capture, on failure/interruption,
 and before returning. Stop other temporary processes you started once no longer
 needed. Verify owned-session cleanup and report it. Preserve unrelated browsers,
-processes, the live preview server and Blockbench/MCP services; never use blanket
+processes, the live preview server and shared tool/MCP services; never use blanket
 browser/process kills. Do not leave Chromium running for reviewers: they read
 saved captures. An inherited browser requires ownership confirmation before cleanup.
 
@@ -56,12 +56,11 @@ directory; use shell for QA, not source changes, installations, or service setup
 Test the actual browser command before treating an optional discovery failure
 as a tooling blocker.
 
-Validate a Blockbench-authored experience, not a procedurally modeled Three.js
-scene. Check requests for exported `.bbmodel` assets and textures, loader errors,
-group/pivot playback, complete environment assemblies, and visible authored
-growth/damage/repair variants. Capture their in-browser appearance; a successful
-MCP export alone does not prove rendering works. Keep the shared Blockbench editor
-unchanged and report provenance gaps to the coordinator.
+Validate the actual Three.js scene, including loaded assets and code-built models.
+Check asset/texture requests, loader errors, rig playback, environment assemblies
+and growth/damage/repair states. Capture in-browser appearance and sample motion
+across action boundaries; successful asset parsing alone does not prove rendering
+or contact works. Check deterministic seeking and resource cleanup where relevant.
 
 This role is text-only. Inspect DOM snapshots, console output, request logs, and
 JavaScript state. Capture screenshots and return their paths without reading

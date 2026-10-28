@@ -12,7 +12,7 @@ guaranteeing identical model responses.
 | Agent | Responsibility | Source edits |
 | --- | --- | --- |
 | `iteration-coordinator` | Bound the run, dispatch work, consolidate evidence, checkpoint validated changes | None; may write ignored run reports |
-| `implementer` | Author scoped Blockbench assets and integrate runtime changes with explicit acceptance criteria | Only assigned files and Blockbench projects |
+| `implementer` | Implement scoped Three.js models, animation and runtime changes with explicit acceptance criteria | Only assigned source/assets |
 | `visual-reviewer` | Review screenshots for composition, colour, lighting, and responsive readability | None; may write ignored review reports |
 | `narrative-reviewer` | Check supplied content against an explicitly approved brief | None; may write ignored review reports |
 | `browser-qa` | Inspect the running site, exercise controls, capture evidence, run existing tests | None; may produce browser artifacts |
@@ -23,11 +23,9 @@ configuration sets `experimental.subagent_depth` to `2` for
 Build → coordinator → worker. This limit controls nesting, not the number of
 parallel reviewers. Worker permissions still prevent further delegation.
 Only the coordinator delegates; only the implementer changes shared source and
-the shared Blockbench editor. The modeling boundary in `AGENTS.md` applies to
-every handoff: models and environments are authored through Blockbench MCP;
-Three.js integrates and animates exports rather than generating replacement
-model geometry. Assign explicit `.bbmodel` export paths and runtime paths, record
-MCP model provenance/group contracts, and validate exports in the browser.
+assets. Follow the modeling and animation conventions in `AGENTS.md` for every
+handoff. Assign explicit source-module and asset paths, record group/pivot and
+animation contracts, and validate the resulting models and motion in the browser.
 Browser QA owns its named browser session. The two reviewers consume its evidence
 in parallel instead of navigating the same browser concurrently.
 
@@ -36,7 +34,7 @@ temporary processes/browser sessions at completion, failure and interrupted
 handoff. Use one browser at a time; freeze it while idle and close it before image
 reviews. The coordinator verifies cleanup and records intentionally retained
 owned processes. Preserve unrelated work and the intentionally live preview and
-Blockbench/MCP services; inherited sessions require confirmed ownership.
+tool/MCP services; inherited sessions require confirmed ownership.
 
 ## Model routing
 
@@ -78,7 +76,7 @@ Initial worktree changes: <git status --short; preserve these>
 Models/variants: <actual selection for each role>
 URL: http://127.0.0.1:8098
 Budget: <maximum rounds and/or deadline>
-Checkpoints: false | true
+Checkpoints: true (default) | false (user-requested deferral)
 Viewports: 1440x900 desktop; 390x844 mobile
 States: <named pages/chapters and exact capture positions>
 Evidence: .artifacts/<run-id>/round-<n>/
@@ -86,13 +84,14 @@ Evidence: .artifacts/<run-id>/round-<n>/
 
 Pass the relevant packet to every child session; they start without the parent's
 conversation. Implementation handoffs also specify at most three changes and a
-checkable acceptance criterion for each. Model work also names the Blockbench
-project, export paths, and required groups/pivots. Review handoffs include source revision,
+checkable acceptance criterion for each. Model work also names the source modules,
+asset paths, and required groups/pivots. Review handoffs include source revision,
 dirty diff, screenshot paths, and capture settings.
 
 Use three rounds when no round count is supplied. An overnight run requires an
-explicit deadline or round count. Checkpointing defaults to false unless the user
-authorizes commits. This workflow never starts an unattended run on its own.
+explicit deadline or round count. Follow `AGENTS.md`'s standing commit policy;
+checkpointing defaults to true. This workflow never starts an unattended run on
+its own.
 
 ## Round sequence
 
@@ -110,7 +109,7 @@ authorizes commits. This workflow never starts an unattended run on its own.
 4. **Validate.** Repeat QA and the applicable reviews using the same states and
    settings. Inspect the diff for scope and preservation of initial user work.
    Unverified states and missing evidence remain explicitly unverified.
-5. **Checkpoint.** If authorized, stage explicit validated files and create a
+5. **Checkpoint.** Unless deferred by the user, stage explicit validated files and create a
    normal new commit. Skip the commit if it would sweep in pre-existing user work;
    report that limitation. Keep evidence and run reports under `.artifacts/`.
 6. **Repeat or finish.** Continue only while the goal remains unmet and the budget

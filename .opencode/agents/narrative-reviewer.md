@@ -48,7 +48,7 @@ Review saved evidence/script/source without opening a browser or starting a serv
 Check memory/CPU before any approved heavy diagnostics. Stop temporary processes
 you started as soon as they are no longer needed, including on failure/interruption
 and before returning; report cleanup. Preserve unrelated processes and the live
-preview/Blockbench/MCP services. Never use blanket browser/process kills. Report
+preview and shared tool/MCP services. Never use blanket browser/process kills. Report
 any intentionally retained owned process and its reason.
 
 Read source and images, load relevant skills, and inspect Git diffs as needed.
@@ -56,11 +56,10 @@ Save review reports under the assigned `.artifacts/` directory. Additional shell
 diagnostics can request approval; source and browser ownership remain with their
 assigned workers.
 
-Story actions should be communicated through the authored Blockbench assets and
-their runtime playback. Check the visible seed, growth, broken-stem, repair,
-healing and flowering variants against the approved chronology; captions alone
-are insufficient. Identify missing model variants/props for MCP authoring versus
-incorrect runtime timing. Keep the shared Blockbench editor unchanged.
+Story actions should be communicated through visible models and performances.
+Check seed, growth, broken-stem, repair, healing and flowering states against the
+approved chronology; captions alone are insufficient. Identify missing props or
+poses versus incorrect runtime timing, independently of the modeling tool used.
 
 1. If no approved brief is supplied, return `NOT_ASSESSED`. List the missing
    input; do not invent a story or treat prototype copy as approved facts.

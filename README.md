@@ -1,8 +1,12 @@
 # Sunflower Garden
 
-A Blockbench-authored garden story served as static HTML/JavaScript. Models,
-including the environment, are created and refined through the Blockbench MCP.
-Local Three.js handles loading, animation, lighting, cameras and story playback.
+A Three.js garden story served as static HTML/JavaScript. Geometry, materials,
+rigs and animation can be created or refined directly in code. Existing
+Blockbench assets remain supported through the local loader; Blockbench is
+optional. Modeling and animation conventions live in `AGENTS.md`.
+
+The approved cinematic work and its completed/remaining items are tracked in
+[`docs/cinematic-improvements.md`](docs/cinematic-improvements.md).
 
 ## Serve locally
 
@@ -61,7 +65,7 @@ Requires OpenCode V2. Project-local definitions live in `.opencode/agents/`:
 
 - `iteration-coordinator`: bounded rounds, handoffs, review consolidation, and
   optional validated Git checkpoints; usable as a primary agent or subagent.
-- `implementer`: scoped Blockbench model authoring and runtime integration.
+- `implementer`: scoped Three.js modeling, animation and runtime integration.
 - `browser-qa`: text-based Playwright CLI checks and screenshot capture.
 - `visual-reviewer`: read-only desktop/mobile screenshot review; requires an
   image-capable model.
