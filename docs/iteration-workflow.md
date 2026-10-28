@@ -1,9 +1,9 @@
 # Reproducible iteration workflow
 
-These agents define a reusable process, not a finalized story. Agent definitions
-are versioned in `.opencode/agents/`, with explicit model and reasoning-variant
-pins in their frontmatter. Record each role's actual model and variant in each
-run so later comparisons use the same setup.
+These agents define a reusable process, not a finalized story. Their Markdown
+definitions in `.opencode/agents/` are the source of truth for model selection,
+permissions, and step limits. Start product work with these configured agents;
+setup checkers and model audits are not part of an iteration run.
 Reproducibility means matching inputs, checkpoints, and review criteria, not
 guaranteeing identical model responses.
 
@@ -12,15 +12,31 @@ guaranteeing identical model responses.
 | Agent | Responsibility | Source edits |
 | --- | --- | --- |
 | `iteration-coordinator` | Bound the run, dispatch work, consolidate evidence, checkpoint validated changes | None; may write ignored run reports |
-| `implementer` | Implement one scoped change with explicit acceptance criteria | Only assigned files |
-| `visual-reviewer` | Review screenshots for composition, colour, lighting, and responsive readability | None |
-| `narrative-reviewer` | Check supplied content against an explicitly approved brief | None |
+| `implementer` | Author scoped Blockbench assets and integrate runtime changes with explicit acceptance criteria | Only assigned files and Blockbench projects |
+| `visual-reviewer` | Review screenshots for composition, colour, lighting, and responsive readability | None; may write ignored review reports |
+| `narrative-reviewer` | Check supplied content against an explicitly approved brief | None; may write ignored review reports |
 | `browser-qa` | Inspect the running site, exercise controls, capture evidence, run existing tests | None; may produce browser artifacts |
 
 The coordinator supports primary or subagent use. The other roles are subagents.
-Only the coordinator delegates; only the implementer changes shared source.
+Use Build as the main agent and launch the coordinator as its subagent. Project
+configuration sets `experimental.subagent_depth` to `2` for
+Build → coordinator → worker. This limit controls nesting, not the number of
+parallel reviewers. Worker permissions still prevent further delegation.
+Only the coordinator delegates; only the implementer changes shared source and
+the shared Blockbench editor. The modeling boundary in `AGENTS.md` applies to
+every handoff: models and environments are authored through Blockbench MCP;
+Three.js integrates and animates exports rather than generating replacement
+model geometry. Assign explicit `.bbmodel` export paths and runtime paths, record
+MCP model provenance/group contracts, and validate exports in the browser.
 Browser QA owns its named browser session. The two reviewers consume its evidence
 in parallel instead of navigating the same browser concurrently.
+
+Workers must check resource pressure before heavy work and clean up their own
+temporary processes/browser sessions at completion, failure and interrupted
+handoff. Use one browser at a time; freeze it while idle and close it before image
+reviews. The coordinator verifies cleanup and records intentionally retained
+owned processes. Preserve unrelated work and the intentionally live preview and
+Blockbench/MCP services; inherited sessions require confirmed ownership.
 
 ## Model routing
 
@@ -30,7 +46,7 @@ in parallel instead of navigating the same browser concurrently.
 | `implementer` | `opencode-go/deepseek-v4.1-flash#high` |
 | `narrative-reviewer` | `opencode-go/claude-haiku-5-5#medium` |
 | `visual-reviewer` | `opencode-go/gpt-6-luna#medium` |
-| `iteration-coordinator` | `openai/gpt-6.1-sol#medium` |
+| `iteration-coordinator` | `opencode-go/gpt-6-luna#xhigh` |
 
 Browser QA is text-based and returns screenshot paths without interpreting them.
 The visual and narrative reviewers use image-capable models. Image-dependent
@@ -70,7 +86,8 @@ Evidence: .artifacts/<run-id>/round-<n>/
 
 Pass the relevant packet to every child session; they start without the parent's
 conversation. Implementation handoffs also specify at most three changes and a
-checkable acceptance criterion for each. Review handoffs include source revision,
+checkable acceptance criterion for each. Model work also names the Blockbench
+project, export paths, and required groups/pivots. Review handoffs include source revision,
 dirty diff, screenshot paths, and capture settings.
 
 Use three rounds when no round count is supplied. An overnight run requires an

@@ -1,8 +1,8 @@
 # Sunflower Garden
 
-A local Three.js prototype using the existing Blockbench models. This setup adds
-version control, a development server, and reusable agents. Story development is
-a separate task; the prototype's existing content is unchanged.
+A Blockbench-authored garden story served as static HTML/JavaScript. Models,
+including the environment, are created and refined through the Blockbench MCP.
+Local Three.js handles loading, animation, lighting, cameras and story playback.
 
 ## Serve locally
 
@@ -39,7 +39,21 @@ Check server behaviour:
 python3 -m unittest discover -s tests -v
 ```
 
-These tests cover the server, not the prototype's scene or narrative.
+These Python tests cover the server. Browser regression checks cover nonsequential
+seeking, motion continuity, ambient clocks, subtitle bounds, sound controls,
+pause/replay, the ending hold, and reduced motion:
+
+```sh
+playwright-cli -s=garden-check open http://localhost:8098
+playwright-cli -s=garden-check run-code --filename=tests/cinematic.cjs
+playwright-cli -s=garden-check close
+```
+
+Use an available browser/configuration for your host. `film-direction.js` owns
+editorial shot tracks and light palettes; `soundscape.js` provides optional local
+Web Audio ambience and short foley cues. Sound starts only after pressing **Sound
+off**, and pauses with the story. Controls fade during playback and return on
+pointer interaction or keyboard focus. Dialogue remains available in the transcript.
 
 ## Reusable OpenCode agents
 
@@ -47,41 +61,21 @@ Requires OpenCode V2. Project-local definitions live in `.opencode/agents/`:
 
 - `iteration-coordinator`: bounded rounds, handoffs, review consolidation, and
   optional validated Git checkpoints; usable as a primary agent or subagent.
-- `implementer`: one scoped change at a time.
+- `implementer`: scoped Blockbench model authoring and runtime integration.
 - `browser-qa`: text-based Playwright CLI checks and screenshot capture.
 - `visual-reviewer`: read-only desktop/mobile screenshot review; requires an
   image-capable model.
 - `narrative-reviewer`: read-only review against a supplied, approved brief;
   otherwise reports `NOT_ASSESSED`.
 
-All five have explicit model/variant pins. Their routing and escalation policy
-live in **`docs/iteration-workflow.md`**, alongside run inputs, fixed viewports,
-evidence, review results, budgets, and stop conditions. Record the actual model
-and variant for every role per run. When using the coordinator as a primary
-agent, select its pinned model separately in the session; choosing a primary
-agent alone does not change an existing session's model.
+Agent behaviour and permissions are defined directly in these Markdown files.
+Use **`docs/iteration-workflow.md`** for bounded implementation rounds and shared
+browser evidence. There is no separate agent-setup checker or model audit.
 
-Inspect discovered definitions from this directory:
-
-```sh
-opencode debug agents
-```
-
-Check discovery, modes, model/variant pins, vision capabilities, step budgets,
-and key role permissions reproducibly:
-
-```sh
-python3 scripts/check_agents.py
-```
-
-If an already-open client has a stale agent list, reload configuration:
-
-```sh
-opencode reload
-```
-
-Reopen the client if its current conversation still has a cached tool catalog.
-Restarting the application server on port 8098 is unrelated to agent loading.
+Normally keep Build as the main agent and ask it to launch
+`iteration-coordinator` as a subagent. The project's
+`experimental.subagent_depth: 2` permits Build → coordinator → worker, while
+worker permissions prevent another delegation level.
 
 Example request (starts a bounded run only when explicitly submitted):
 

@@ -2,52 +2,205 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Balcony Giants — a sunflower story</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<link rel="icon" href="data:,">
+<title>Taller Than Us — Paresh &amp; Anshita</title>
 <style>
+  :root {
+    --ink: #fff8ea;
+    --gold: #ffd54a;
+    --panel: rgba(14, 18, 34, .55);
+    --panel-line: rgba(255, 248, 234, .28);
+  }
+  * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1020;
-    font-family: Georgia, 'Times New Roman', serif; }
+    font-family: Georgia, 'Times New Roman', serif; color: var(--ink); }
   #scene { position: fixed; inset: 0; }
-  #caption { position: fixed; left: 0; right: 0; bottom: 64px; text-align: center;
-    color: #fff8ea; text-shadow: 0 2px 12px rgba(0,0,0,.7); pointer-events: none;
-    padding: 0 24px; }
-  #caption h1 { font-size: clamp(20px, 4vw, 40px); margin: 0 0 8px; font-weight: normal;
-    letter-spacing: .5px; }
-  #caption p { font-size: clamp(14px, 2.2vw, 20px); margin: 0; opacity: .92; font-style: italic; }
-  #ui { position: fixed; left: 0; right: 0; bottom: 16px; display: flex;
-    align-items: center; justify-content: center; gap: 14px; }
-  .dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #fff8ea;
-    background: transparent; cursor: pointer; padding: 0; opacity: .8; }
-  .dot.active { background: #ffd54a; border-color: #ffd54a; }
-  .navbtn { background: rgba(0,0,0,.35); color: #fff8ea; border: 1px solid rgba(255,248,234,.6);
-    border-radius: 20px; padding: 6px 16px; font-size: 15px; cursor: pointer;
-    font-family: inherit; }
-  .navbtn:hover { background: rgba(0,0,0,.6); }
-  #title { position: fixed; top: 14px; left: 18px; color: #fff8ea; opacity: .85;
-    font-size: 15px; letter-spacing: 2px; text-shadow: 0 1px 8px rgba(0,0,0,.8); }
-  .bubble { position: fixed; max-width: 240px; background: rgba(255,253,245,.95);
-    color: #3a2f22; border-radius: 14px; padding: 8px 12px; font-size: 14px;
-    font-style: normal; pointer-events: none; transform: translate(-50%, -110%);
-    box-shadow: 0 4px 16px rgba(0,0,0,.35); transition: opacity .4s; white-space: normal; }
-  .bubble:after { content: ''; position: absolute; left: 50%; bottom: -8px;
-    margin-left: -8px; border: 8px solid transparent; border-top-color: rgba(255,253,245,.95);
-    border-bottom: 0; }
+  #scene canvas { display: block; }
+
+  /* soft scrims keep captions legible over any sky */
+  #scrim-top, #scrim-bottom { position: fixed; left: 0; right: 0; pointer-events: none; }
+  #scrim-top { top: 0; height: 15%; background: linear-gradient(to bottom, rgba(6,10,22,.35), transparent); }
+  #scrim-bottom { bottom: 0; height: 23%; background: linear-gradient(to top, rgba(6,10,22,.55), transparent); }
+
+  #title { position: fixed; top: max(14px, env(safe-area-inset-top)); left: 18px;
+    color: var(--ink); opacity: .9; font-size: 15px; letter-spacing: 3px;
+    text-shadow: 0 1px 8px rgba(0,0,0,.8); }
+  #title small { display: block; letter-spacing: 1px; opacity: .6; font-size: 10px;
+    margin-top: 3px; }
+
+  #film-card { position: fixed; inset: 0; z-index: 4; display: grid; place-items: center;
+    padding: 28px; background: #080b12; color: var(--ink); text-align: center;
+    pointer-events: none; visibility: hidden; opacity: 0; transition: none; }
+  #film-card-content { opacity: 1; }
+  #film-card-title { margin: 0; font-size: clamp(24px, 5vw, 54px); font-weight: normal;
+    letter-spacing: clamp(4px, 1.3vw, 14px); text-shadow: 0 2px 20px rgba(0,0,0,.6); }
+  #film-card-subtitle { display: block; min-height: 1.6em; margin-top: 14px;
+    font-size: clamp(14px, 2vw, 20px); font-style: italic; letter-spacing: 1px; opacity: .85; }
+
+  #caption { position: fixed; top: max(76px, calc(env(safe-area-inset-top) + 58px));
+    left: 0; right: 0; text-align: center; color: var(--ink); pointer-events: none;
+    padding: 0 76px; display: none; }
+  #caption h1 { font-size: clamp(14px, 1.55vw, 19px); margin: 0; font-weight: normal;
+    letter-spacing: 1.1px; text-shadow: 0 2px 12px rgba(0,0,0,.8); opacity: .9; }
+
+  #time-super { position: fixed; z-index: 2; top: max(70px, calc(env(safe-area-inset-top) + 54px));
+    left: 50%; transform: translateX(-50%); padding: 5px 12px; border-radius: 16px;
+    color: var(--ink); background: rgba(32, 35, 43, .38); border: 1px solid rgba(255,248,234,.2);
+    font: 600 12px/1.2 system-ui, sans-serif; letter-spacing: 1.8px; text-shadow: 0 1px 8px rgba(0,0,0,.75);
+    opacity: 0; visibility: hidden; pointer-events: none; white-space: nowrap; }
+
+  #ui { position: fixed; left: 0; right: 0; bottom: max(14px, env(safe-area-inset-bottom));
+    display: flex; align-items: center; justify-content: center; gap: 12px; }
+
+  .navbtn { background: var(--panel); color: var(--ink); border: 1px solid var(--panel-line);
+    border-radius: 22px; padding: 8px 18px; font-size: 15px; cursor: pointer;
+    font-family: inherit; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    transition: background .18s ease, transform .12s ease, border-color .18s ease;
+    min-height: 40px; }
+  .navbtn:hover { background: rgba(10,14,28,.78); border-color: rgba(255,248,234,.6); }
+  .navbtn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .navbtn:active { transform: translateY(1px); }
+  #prev, #next { font-size: 20px; line-height: 1; padding: 8px 16px; }
+  #replay { padding: 8px 14px; }
+
+  #dots { position: fixed; left: 0; right: 0; bottom: calc(max(14px, env(safe-area-inset-bottom)) + 54px);
+    display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
+    padding: 0 12px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--ink);
+    background: transparent; cursor: pointer; padding: 0; opacity: .7;
+    transition: transform .15s ease; }
+  .dot:hover { opacity: 1; transform: scale(1.15); }
+  .dot:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .dot.active { background: var(--gold); border-color: var(--gold); opacity: 1; }
+
+  #counter { position: fixed; top: max(16px, env(safe-area-inset-top)); right: 18px;
+    font-size: 13px; letter-spacing: 1px; opacity: .8;
+    text-shadow: 0 1px 8px rgba(0,0,0,.8); }
+
+  #progress { position: fixed; left: 0; right: 0; bottom: 0; height: 3px;
+    background: rgba(255,248,234,.14); }
+  #bar { height: 100%; width: 0%; background: var(--gold); }
+
+  #loading { position: fixed; inset: 0; display: flex; align-items: center;
+    justify-content: center; background: #0b1020; color: var(--ink); opacity: .9;
+    font-size: 16px; letter-spacing: 2px; transition: opacity .6s ease; z-index: 5; }
+  #loading.done { opacity: 0; pointer-events: none; }
+  #subtitles { position: fixed; z-index: 3; left: 50%; bottom: 126px;
+    transform: translateX(-50%); width: min(680px, calc(100% - 40px));
+    text-align: center; pointer-events: none; opacity: 0;
+    text-shadow: 0 2px 4px #000, 0 0 14px rgba(0,0,0,.8); }
+  #subtitles.visible { opacity: 1; }
+  #subtitle-speaker { display: block; margin-bottom: 8px; color: #f5d7aa;
+    font: 11px/1.3 system-ui,sans-serif; text-transform: uppercase; letter-spacing: 2.4px; }
+  #subtitle-text { margin: 0; font-size: clamp(19px, 2vw, 25px); line-height: 1.4; text-wrap: balance; }
+  #ui, #dots, #counter, #story-notes, #title, #progress { transition: opacity .45s ease; }
+  body.cinema #ui, body.cinema #dots, body.cinema #counter,
+  body.cinema #story-notes, body.cinema #title, body.cinema #progress { opacity: 0; }
+  body.cinema:has(:focus-visible) #ui, body.cinema:has(:focus-visible) #dots,
+  body.cinema:has(:focus-visible) #story-notes { opacity: 1; }
+  #sound { font-size: 12px; }
+  #bubble-layer { display: none; }
+  .speech-bubble { position: fixed; width: max-content; max-width: min(330px, 38vw);
+    padding: 11px 16px 13px; border: 1px solid rgba(70,53,38,.14); border-radius: 20px;
+    background: rgba(255,251,241,.97); color: #30271f; box-shadow: 0 7px 24px rgba(12,15,24,.3);
+    transform: translate(-50%, -100%); opacity: 0; visibility: hidden; }
+  .speech-bubble.visible { opacity: 1; visibility: visible; }
+  .speech-bubble::after { content: ''; position: absolute; bottom: -9px; left: 50%; width: 16px; height: 16px;
+    background: inherit; border-right: 1px solid rgba(70,53,38,.14); border-bottom: 1px solid rgba(70,53,38,.14);
+    transform: translateX(-50%) rotate(45deg); }
+  .bubble-name { display: block; margin-bottom: 4px; font: 700 10px/1.2 system-ui, sans-serif;
+    letter-spacing: 1.3px; text-transform: uppercase; color: #a66820; }
+  .speech-bubble[data-speaker="Anshita"] .bubble-name { color: #347899; }
+  .bubble-text { margin: 0; font: 16px/1.38 Georgia, 'Times New Roman', serif; }
+  .reaction-bubble { position: fixed; display: grid; place-items: center; width: 42px; height: 42px;
+    border-radius: 50%; background: rgba(255,251,241,.97); border: 1px solid rgba(70,53,38,.16);
+    box-shadow: 0 5px 18px rgba(12,15,24,.28); font: 23px/1 system-ui, sans-serif;
+    transform: translate(-50%, -100%); opacity: 0; visibility: hidden; }
+  .reaction-bubble.visible { opacity: 1; visibility: visible; }
+  .reaction-bubble::after { content: ''; position: absolute; bottom: -5px; left: 50%; width: 9px; height: 9px;
+    background: inherit; border-right: 1px solid rgba(70,53,38,.16); border-bottom: 1px solid rgba(70,53,38,.16);
+    transform: translateX(-50%) rotate(45deg); }
+  #story-notes { position: fixed; top: 44px; right: 18px; font: 11px system-ui, sans-serif;
+    padding: 5px 9px; min-height: 28px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+  #transcript { max-width: 640px; width: calc(100% - 36px); max-height: 80vh;
+    overflow-y: auto; border: 1px solid var(--panel-line); border-radius: 14px;
+    background: #141b2b; color: var(--ink); padding: 24px; }
+  #transcript::backdrop { background: rgba(0,0,0,.7); }
+  #transcript h2 { margin-top: 0; font-weight: normal; }
+  #transcript h3 { color: var(--gold); font-size: 18px; }
+  #transcript p { line-height: 1.55; }
+  #transcript ol { padding-left: 22px; }
+  #transcript-close { float: right; }
+
+  @media (max-width: 620px) {
+    #subtitles { bottom: 132px; width: calc(100% - 30px); }
+    #ui { flex-wrap: wrap; padding: 0 8px; }
+    #sound { padding: 8px; }
+    #caption { top: max(76px, calc(env(safe-area-inset-top) + 60px)); padding: 0 62px; }
+    #caption h1 { font-size: 14px; }
+    .speech-bubble { max-width: min(250px, 64vw); padding: 9px 12px 11px; border-radius: 17px; }
+    .bubble-name { font-size: 9px; margin-bottom: 3px; }
+    .bubble-text { font-size: 15px; line-height: 1.34; }
+    .reaction-bubble { width: 36px; height: 36px; font-size: 20px; }
+    #ui { gap: 7px; }
+    .navbtn { padding: 9px 12px; font-size: 14px; }
+    #prev, #next { padding: 8px 12px; }
+    #title { font-size: 13px; letter-spacing: 2px; }
+    #dots { gap: 8px; }
+    .dot { width: 11px; height: 11px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #ui, #dots, #counter, #story-notes, #title, #progress { transition: none; }
+    .navbtn, .dot, #bar, #loading { transition: none; }
+  }
 </style>
 <script type="importmap">
 { "imports": { "three": "./vendor/three.module.js" } }
 </script>
 </head>
 <body>
-<div id="scene"></div>
-<div id="title">BALCONY GIANTS</div>
-<div class="bubble" id="bub-p"></div>
-<div class="bubble" id="bub-a"></div>
-<div id="caption"><h1></h1><p></p></div>
-<div id="ui">
-  <button class="navbtn" id="prev">‹</button>
-  <button class="navbtn" id="play">Pause</button>
-  <button class="navbtn" id="next">›</button>
+<div id="scene" aria-hidden="true"></div>
+<div id="scrim-top"></div>
+<div id="scrim-bottom"></div>
+<div id="title">TALLER THAN US<small>Paresh &amp; Anshita · an imagined telling</small></div>
+<div id="film-card" aria-hidden="true"><div id="film-card-content">
+  <h1 id="film-card-title"></h1><span id="film-card-subtitle"></span>
+</div></div>
+<div id="time-super" aria-hidden="true">7:00 a.m.</div>
+<div id="counter">1 / 12</div>
+<div id="subtitles" aria-hidden="true"><span id="subtitle-speaker"></span><p id="subtitle-text"></p></div>
+<button class="navbtn" id="story-notes" aria-haspopup="dialog">Read the story</button>
+<section id="caption" aria-label="Current scene"><h1></h1></section>
+<div id="bubble-layer" aria-hidden="true">
+  <div class="speech-bubble" id="bubble-paresh" data-speaker="Paresh"><span class="bubble-name">Paresh</span><p class="bubble-text"></p></div>
+  <div class="speech-bubble" id="bubble-anshita" data-speaker="Anshita"><span class="bubble-name">Anshita</span><p class="bubble-text"></p></div>
+  <div class="reaction-bubble" id="reaction-paresh"></div>
+  <div class="reaction-bubble" id="reaction-anshita"></div>
 </div>
+<div id="announcement" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+<dialog id="transcript" aria-labelledby="transcript-title">
+  <button class="navbtn" id="transcript-close" aria-label="Close story transcript">Close</button>
+  <h2 id="transcript-title">A summer together</h2>
+  <p>An imagined telling of Paresh and Anshita’s summer, not remembered quotations.
+    The garden carries the story quietly. Use Continue for one line at a time;
+    the arrows move between moments. Play lets the exchanges unfold.</p>
+  <ol id="transcript-lines"></ol>
+</dialog>
+<div id="dots" role="tablist" aria-label="Chapters"></div>
+<div id="ui">
+  <button class="navbtn" id="prev" aria-label="Previous chapter">‹</button>
+  <button class="navbtn" id="play" aria-label="Pause or play">Pause</button>
+  <button class="navbtn" id="continue" aria-label="Continue to the next line or quiet moment">Continue</button>
+  <button class="navbtn" id="next" aria-label="Next chapter">›</button>
+  <button class="navbtn" id="replay" aria-label="Replay from the beginning">↺</button>
+  <button class="navbtn" id="sound" aria-label="Toggle ambient sound" aria-pressed="false">Sound off</button>
+</div>
+<div id="progress" role="progressbar" aria-label="Chapter progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="bar"></div></div>
+<div id="loading">planting the balcony…</div>
 <script type="module" src="./garden.js"></script>
 </body>
 </html>

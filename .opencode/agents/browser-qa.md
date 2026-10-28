@@ -2,29 +2,26 @@
 description: Uses text-based Playwright CLI checks and captures screenshots for a separate vision-capable reviewer
 mode: subagent
 model: opencode-go/deepseek-v4.1-flash#low
-steps: 50
+steps: 120
 permissions:
   - action: "*"
-    resource: "*"
-    effect: deny
-  - action: read
     resource: "*"
     effect: allow
   - action: read
     resource: "*.env*"
     effect: deny
-  - action: glob
+  - action: edit
     resource: "*"
+    effect: deny
+  - action: edit
+    resource: ".artifacts/*"
     effect: allow
-  - action: grep
+  - action: subagent
     resource: "*"
-    effect: allow
-  - action: skill
-    resource: playwright-cli
-    effect: allow
+    effect: deny
   - action: shell
-    resource: "playwright-cli *"
-    effect: allow
+    resource: "git *"
+    effect: deny
   - action: shell
     resource: "git status *"
     effect: allow
@@ -41,6 +38,30 @@ permissions:
 
 Read the handoff and the evidence/review contracts in
 `docs/iteration-workflow.md`. Load the `playwright-cli` skill before browser work.
+
+## Resource ownership and cleanup
+
+Check memory/CPU before launch. Use one assigned named browser and one page at a
+time; seek/freeze while inspecting rather than leave software-WebGL autoplay
+running idle. Close that session after evidence capture, on failure/interruption,
+and before returning. Stop other temporary processes you started once no longer
+needed. Verify owned-session cleanup and report it. Preserve unrelated browsers,
+processes, the live preview server and Blockbench/MCP services; never use blanket
+browser/process kills. Do not leave Chromium running for reviewers: they read
+saved captures. An inherited browser requires ownership confirmation before cleanup.
+
+Routine CLI discovery, diagnostic skills, tests, and evidence writing are
+available. Write reports and browser artifacts under the assigned evidence
+directory; use shell for QA, not source changes, installations, or service setup.
+Test the actual browser command before treating an optional discovery failure
+as a tooling blocker.
+
+Validate a Blockbench-authored experience, not a procedurally modeled Three.js
+scene. Check requests for exported `.bbmodel` assets and textures, loader errors,
+group/pivot playback, complete environment assemblies, and visible authored
+growth/damage/repair variants. Capture their in-browser appearance; a successful
+MCP export alone does not prove rendering works. Keep the shared Blockbench editor
+unchanged and report provenance gaps to the coordinator.
 
 This role is text-only. Inspect DOM snapshots, console output, request logs, and
 JavaScript state. Capture screenshots and return their paths without reading
