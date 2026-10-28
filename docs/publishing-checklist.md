@@ -25,14 +25,17 @@ Site: https://rick2047.github.io/sunflower-garden/
   and required runtime assets.
 - [x] Commit the deployment configuration and push the validated project.
 - [x] Enable GitHub Pages and confirm the deployment succeeds.
-  Latest verified deployment: commit `515a592`, Actions run
-  [40685706097](https://github.com/rick2047/sunflower-garden/actions/runs/40685706097).
+  Latest verified deployment: commit `df85a1c`, Actions run
+  [40743650074](https://github.com/rick2047/sunflower-garden/actions/runs/40743650074).
 - [x] Test the public URL at the latest verified deployment on desktop and mobile:
   asset loading, playback, subtitles, chapter navigation, pause/replay, and opt-in sound.
   `tests/cinematic.cjs` passed against the public origin at both viewports; sampled
   public action captures are in the ignored `.artifacts/cinematic-direct-20261028/`.
-- [ ] Re-test the public URL after the speech-bubble build is deployed, including
+- [x] Re-test the public URL after the speech-bubble build is deployed, including
   speaker attribution and placement at desktop and mobile viewports.
+  `tests/cinematic.cjs` passed against the public URL in Chromium after the
+  `df85a1c` deployment, including attribution and viewport-bound checks at
+  1440×900 and 390×844.
 - [x] Add the live link to the README and GitHub repository description/website.
 - [x] Share the verified public link with the user.
 
