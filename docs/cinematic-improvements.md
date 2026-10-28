@@ -124,9 +124,10 @@ is no longer blocked on Blockbench.
 
 - [x] Present every dialogue line in a speaker-attributed bubble anchored to the
   speaking character; playback dialogue is not a fixed subtitle panel.
-  `tests/cinematic.cjs` checks every dialogue turn for speaker/text attribution,
-  deterministic placement and viewport bounds at 1440×900 and 390×844; quiet
-  beats hide the bubble.
+  `tests/cinematic.cjs` checks every dialogue turn for speaker/text attribution
+  and viewport bounds at 1440×900 and 390×844; representative opening, storm
+  and final lines are re-sought to check deterministic placement, and quiet beats
+  hide the bubble.
 - [x] Fade controls during playback; restore them on interaction/keyboard focus.
 - [x] Reduce permanent scrims; retain transcript and reduced-motion support.
 - [x] Replace the former emoji expressiveness with richer physical acting.

@@ -9,6 +9,12 @@ function validatePositive(name, value) {
   }
 }
 
+function validateNonNegative(name, value) {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new RangeError(`${name} must be non-negative and finite`);
+  }
+}
+
 function overlapArea(left, top, right, bottom, obstacle) {
   const width = Math.max(0, Math.min(right, obstacle.right) - Math.max(left, obstacle.left));
   const height = Math.max(0, Math.min(bottom, obstacle.bottom) - Math.max(top, obstacle.top));
@@ -21,7 +27,6 @@ function overlapArea(left, top, right, bottom, obstacle) {
  * Inputs and the returned rectangle use viewport pixels. The layout prefers a
  * bubble above the speaker, moves it below when the top safe area leaves too
  * little room, and scores alternate offsets against protected screen regions.
- * Pass a reusable result to update it in place; omit it for a standalone result.
  */
 export function layoutSpeechBubble({
   anchor,
@@ -30,7 +35,7 @@ export function layoutSpeechBubble({
   obstacles = NO_OBSTACLES,
   safeArea = DEFAULT_SAFE_AREA,
   gap = 14,
-}, reusableLayout) {
+}) {
   if (!Number.isFinite(anchor?.x)) throw new TypeError('anchor.x must be finite');
   if (!Number.isFinite(anchor?.y)) throw new TypeError('anchor.y must be finite');
   validatePositive('size.width', size?.width);
@@ -46,10 +51,10 @@ export function layoutSpeechBubble({
   const rightInset = safeArea?.right ?? DEFAULT_SAFE_AREA.right;
   const bottomInset = safeArea?.bottom ?? DEFAULT_SAFE_AREA.bottom;
   const leftInset = safeArea?.left ?? DEFAULT_SAFE_AREA.left;
-  if (!Number.isFinite(topInset) || topInset < 0) throw new RangeError('safeArea.top must be non-negative');
-  if (!Number.isFinite(rightInset) || rightInset < 0) throw new RangeError('safeArea.right must be non-negative');
-  if (!Number.isFinite(bottomInset) || bottomInset < 0) throw new RangeError('safeArea.bottom must be non-negative');
-  if (!Number.isFinite(leftInset) || leftInset < 0) throw new RangeError('safeArea.left must be non-negative');
+  validateNonNegative('safeArea.top', topInset);
+  validateNonNegative('safeArea.right', rightInset);
+  validateNonNegative('safeArea.bottom', bottomInset);
+  validateNonNegative('safeArea.left', leftInset);
 
   let minLeft = leftInset, maxLeft = viewport.width - rightInset - size.width;
   let minTop = topInset, maxTop = viewport.height - bottomInset - size.height;
@@ -90,17 +95,17 @@ export function layoutSpeechBubble({
     }
   }
 
-  const result = reusableLayout || { rect: {} };
-  const rect = result.rect || (result.rect = {});
-  result.left = bestLeft;
-  result.top = bestTop;
-  result.width = size.width;
-  result.height = size.height;
-  result.placement = bestPlacement;
-  result.tailOffset = clamp(anchor.x - (bestLeft + size.width / 2), -size.width / 2 + 18, size.width / 2 - 18);
-  rect.left = bestLeft;
-  rect.top = bestTop;
-  rect.right = bestLeft + size.width;
-  rect.bottom = bestTop + size.height;
-  return result;
+  return {
+    left: bestLeft,
+    top: bestTop,
+    width: size.width,
+    height: size.height,
+    placement: bestPlacement,
+    tailOffset: clamp(anchor.x - (bestLeft + size.width / 2), -size.width / 2 + 18, size.width / 2 - 18),
+    minLeft,
+    maxLeft,
+    minTop,
+    maxTop,
+    rect: { left: bestLeft, top: bestTop, right: bestLeft + size.width, bottom: bestTop + size.height },
+  };
 }

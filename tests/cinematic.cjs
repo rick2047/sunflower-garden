@@ -380,7 +380,7 @@ async page => {
       const layout = await page.locator('#speech-bubble').boundingBox();
       assert(layout.x >= 0 && layout.x + layout.width <= width && layout.y + layout.height <= height, 'Speech bubble overflow');
     }
-    // The character-attributed bubble remains deterministic across every chapter.
+    // The character-attributed bubble remains in bounds on every dialogue turn.
     for (const [width,height] of [[1440,900],[390,844]]) {
       await page.setViewportSize({width,height});
       const { bubbles, expectedCount } = await page.evaluate(() => {

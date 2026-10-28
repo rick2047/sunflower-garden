@@ -185,7 +185,8 @@ const S = {
   stage: null, door: null, stageLamp: null, roomLight: null, doorAngle: 0,
   laptopScreen: null, laptopKeyboard: null, laptopHome: null, laptopMode: 'hidden',
   models: [], assetWarnings: [], filmCard: null,
-  bubbleLayout: null, bubbleSize: { width: 0, height: 0 }, bubbleUpdateCount: 0,
+  bubbleLayout: null, bubblePlacement: null, bubbleOffset: { x: 0, y: 0 },
+  bubbleSize: { width: 0, height: 0 }, bubbleNeedsLayout: true, bubbleUpdateCount: 0,
   performers: null, performance: { joy: {}, kneel: {}, contacts: {} },
 };
 
@@ -206,6 +207,7 @@ window.__garden = {
 function enterChapter(i) {
   S.chapter = ((i % CH.length) + CH.length) % CH.length;
   S.t = 0;
+  S.bubbleNeedsLayout = true;
   updateCaption();
   if (S.ready) { applyState(S.chapter, S.t); renderer.render(scene, camera); }
 }
@@ -216,6 +218,7 @@ addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   presentation.measureDialogue(S.bubbleSize);
+  S.bubbleNeedsLayout = true;
   if (S.ready) { applyState(S.chapter, S.t); renderer.render(scene, camera); }
 });
 
@@ -253,7 +256,9 @@ soundBtn.onclick = async () => {
 };
 
 function updateDialogue(dialogue = dialogueAt(S.chapter, S.t)) {
-  if (presentation.updateDialogue(dialogue) && dialogue.phase === 'line') {
+  if (!presentation.updateDialogue(dialogue)) return;
+  S.bubbleNeedsLayout = true;
+  if (dialogue.phase === 'line') {
     presentation.measureDialogue(S.bubbleSize);
   }
 }
@@ -316,25 +321,47 @@ function layoutDialogueBubble(ch, storyT, dialogue) {
   S.bubbleUpdateCount++;
   if (dialogue.phase !== 'line' || !projectDialogueHead(dialogue.speaker, _dialogueAnchor)) {
     S.bubbleLayout = null;
+    S.bubblePlacement = null;
+    S.bubbleNeedsLayout = true;
     presentation.positionDialogue(null);
     return;
   }
 
-  const compact = innerWidth <= 620;
-  if (projectDialogueHead(dialogue.listener, _dialogueListenerAnchor)) {
-    _dialogueObstacle.left = _dialogueListenerAnchor.x - (compact ? 24 : 32);
-    _dialogueObstacle.right = _dialogueListenerAnchor.x + (compact ? 24 : 32);
-    _dialogueObstacle.top = _dialogueListenerAnchor.y - (compact ? 25 : 32);
-    _dialogueObstacle.bottom = _dialogueListenerAnchor.y + (compact ? 20 : 25);
-    _dialogueObstacles.length = 1;
-  } else {
-    _dialogueObstacles.length = 0;
+  if (S.bubbleNeedsLayout || !S.bubblePlacement) {
+    const compact = innerWidth <= 620;
+    if (projectDialogueHead(dialogue.listener, _dialogueListenerAnchor)) {
+      _dialogueObstacle.left = _dialogueListenerAnchor.x - (compact ? 24 : 32);
+      _dialogueObstacle.right = _dialogueListenerAnchor.x + (compact ? 24 : 32);
+      _dialogueObstacle.top = _dialogueListenerAnchor.y - (compact ? 25 : 32);
+      _dialogueObstacle.bottom = _dialogueListenerAnchor.y + (compact ? 20 : 25);
+      _dialogueObstacles.length = 1;
+    } else {
+      _dialogueObstacles.length = 0;
+    }
+    _dialogueViewport.width = innerWidth;
+    _dialogueViewport.height = innerHeight;
+    _dialogueSafeArea.bottom = compact ? 150 : 118;
+    _bubbleLayoutInput.gap = compact ? 15 : 18;
+    S.bubblePlacement = layoutSpeechBubble(_bubbleLayoutInput);
+    S.bubbleOffset.x = S.bubblePlacement.left - _dialogueAnchor.x;
+    S.bubbleOffset.y = S.bubblePlacement.top - _dialogueAnchor.y;
+    S.bubbleNeedsLayout = false;
   }
-  _dialogueViewport.width = innerWidth;
-  _dialogueViewport.height = innerHeight;
-  _dialogueSafeArea.bottom = compact ? 150 : 118;
-  _bubbleLayoutInput.gap = compact ? 15 : 18;
-  layoutSpeechBubble(_bubbleLayoutInput, _bubbleLayout);
+  const placement = S.bubblePlacement;
+  const left = clamp(_dialogueAnchor.x + S.bubbleOffset.x, placement.minLeft, placement.maxLeft);
+  const top = clamp(_dialogueAnchor.y + S.bubbleOffset.y, placement.minTop, placement.maxTop);
+  const tailOffset = clamp(_dialogueAnchor.x - (left + placement.width / 2),
+    -placement.width / 2 + 18, placement.width / 2 - 18);
+  _bubbleLayout.left = left;
+  _bubbleLayout.top = top;
+  _bubbleLayout.width = placement.width;
+  _bubbleLayout.height = placement.height;
+  _bubbleLayout.placement = placement.placement;
+  _bubbleLayout.tailOffset = tailOffset;
+  _bubbleLayout.rect.left = left;
+  _bubbleLayout.rect.top = top;
+  _bubbleLayout.rect.right = left + placement.width;
+  _bubbleLayout.rect.bottom = top + placement.height;
   _bubbleLayout.anchor.x = _dialogueAnchor.x;
   _bubbleLayout.anchor.y = _dialogueAnchor.y;
   _bubbleLayout.speaker = dialogue.speaker;
@@ -1425,6 +1452,7 @@ function seek(ch, seconds) {
   S.frozen = true; S.playing = false;
   if (!S.ready) throw new Error('Garden assets are not ready');
   S.chapter = i; S.t = clamp(Number(seconds) || 0, 0, CH[i].dur);
+  S.bubbleNeedsLayout = true;
   updateCaption(); setPlayLabel();
   applyState(i, S.t);
   renderer.render(scene, camera);

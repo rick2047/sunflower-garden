@@ -74,17 +74,19 @@ const shortViewport = layoutSpeechBubble({
 });
 assert.deepEqual([shortViewport.left, shortViewport.top], [60, 50],
   'bubble centers safely when fixed UI insets exceed a short viewport');
-const reusableLayout = {};
-const reusableRect = layoutSpeechBubble({
-  anchor: { x: 195, y: 280 }, size: { width: 220, height: 88 },
-  viewport: { width: 390, height: 844 },
-}, reusableLayout).rect;
-assert.equal(layoutSpeechBubble({
-  anchor: { x: 210, y: 300 }, size: { width: 220, height: 88 },
-  viewport: { width: 390, height: 844 },
-}, reusableLayout), reusableLayout, 'caller can reuse the layout result');
-assert.equal(reusableLayout.left, 100, 'reused layout updates its position');
-assert.equal(reusableLayout.rect, reusableRect, 'reusing layout does not replace its rectangle');
+const pureLayoutInput = Object.freeze({
+  anchor: Object.freeze({ x: 195, y: 280 }),
+  size: Object.freeze({ width: 220, height: 88 }),
+  viewport: Object.freeze({ width: 390, height: 844 }),
+  safeArea: Object.freeze({ top: 58, right: 12, bottom: 142, left: 12 }),
+  obstacles: Object.freeze([Object.freeze({ left: 135, right: 180, top: 300, bottom: 380 })]),
+});
+const pureInputBefore = JSON.stringify(pureLayoutInput);
+const pureLayoutResult = layoutSpeechBubble(pureLayoutInput);
+assert.equal(JSON.stringify(pureLayoutInput), pureInputBefore,
+  'pure layout does not mutate its input');
+assert.deepEqual(layoutSpeechBubble(pureLayoutInput), pureLayoutResult,
+  'pure layout returns the same geometry for unchanged inputs');
 
 const steps = foleyCuesFor('bloom');
 assert.equal(steps.length, 4);
