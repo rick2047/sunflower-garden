@@ -27,6 +27,11 @@ determinism/contact/grounding/geography/control/reduced-motion assertions intact
 `node tests/story-modules.mjs` also passed (exact original dialogue/timing hash,
 named cue crossings and presentation controls); all six Python tests passed.
 
+Continuous playback also completed all 399 seconds with sound enabled, no page
+errors and a held ending card. Twelve chronological chapter captures were
+inspected, alongside the action-specific desktop/mobile images. This is sampled
+visual evidence, not a claim to have heard the soundtrack or screened every frame.
+
 This tracks the user's approved review of the garden film. Preserve the existing
 12-chapter story and character identity. Checked items are implemented; unchecked
 items include partial work and optional ideas. Implementation baseline: `8c4bb07`.
@@ -152,9 +157,15 @@ is no longer blocked on Blockbench.
 - [x] Cache remaining repeated rig references and reduce frame-loop allocations.
   Cached plant soil/wrap and flower-nameplate pivots, attachment hands and progress
   element; reused contact/laptop vector scratch space. Deterministic QA passed.
-- [ ] Profile frame times, duplicate asset loading and disabled frustum culling
-  before targeted optimization. The sampled ending render had 518 draw calls and
-  11,684 triangles; this is not an FPS benchmark.
+- [x] Profile frame times, duplicate asset loading and disabled frustum culling
+  before targeted optimization. At 960×600 on headless Chromium/SwiftShader, 12
+  explicit seek+render samples averaged 63.2 ms (49.8–82.0 ms); the ending had 518
+  draw calls and 11,684 triangles. All 792 mesh instances have culling disabled;
+  leave that conservative choice intact because the skin/variant bounds animate.
+  Repeated garden-care loads made three network requests. Enabling Three's fetch
+  cache reduced every model URL to one request while keeping independent parsed
+  skeleton roots; the loader returned no warnings. This is a software-renderer
+  profile, not a production desktop/mobile FPS claim.
 
 ## Validation recorded for the implementation baseline
 

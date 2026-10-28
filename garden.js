@@ -82,6 +82,9 @@ sunLight.shadow.mapSize.set(1024, 1024);
 Object.assign(sunLight.shadow.camera, {left:-60,right:60,top:70,bottom:-50,near:1,far:180});
 sunLight.shadow.bias = -0.001;
 
+// Reuse fetched model text/images across the three independent plant/bee rigs.
+// Parsing still creates separate skeletons, so animation and disposal stay local.
+THREE.Cache.enabled = true;
 const loader = new BBModelLoader(undefined, { unitScale: 1 });
 const loadModel = (f) => new Promise((res, rej) =>
   loader.load('./models/' + f, (m) => {
@@ -740,7 +743,7 @@ function applyState(ch, t) {
     setGroupVisible(S.flowersRoot, label, false);
     setGroupVisible(S.flowersRoot, post, false);
   }
-  setVis('seed_packet', !!c.seeds || (ch === 0 && storyT >= 16));
+  setVis('seed_packet', !!c.seeds || (ch === 0 && storyT >= STORY_CUES.dawn.packetReveal));
   if (act === 'sow' && c.seeds) {
     // These existing authored seed groups map to first, middle, and third
     // pots. Keep the pot row fixed and leave each placed seed behind as the
@@ -1109,7 +1112,8 @@ function applyState(ch, t) {
         // She holds the same broken section through his tape run. "It's
         // slipping" loosens his grip; "Don't let go" re-closes it; "I need the
         // tape" releases him on the cut.
-        const slip = smooth((storyT - 7.0) / 0.9) * (1 - smooth((storyT - 10.2) / 1.0));
+        const slip = smooth((storyT - STORY_CUES.storm.slip) / 0.9)
+          * (1 - smooth((storyT - STORY_CUES.storm.regrip) / 1.0));
         const leaving = smooth((storyT - STORY_CUES.storm.leaving) / 0.6);
         // "It's slipping." Keep the arm reaching for the stem but visibly off
         // the grip instead of dropping it to his side; "Don't let go." closes
@@ -1183,7 +1187,7 @@ function applyState(ch, t) {
       group.scale.setScalar(scale);
       group.rotation.set(0, 0, 0);
     };
-    if (act === 'sow' || (act === 'invite' && storyT >= 16)) {
+    if (act === 'sow' || (act === 'invite' && storyT >= STORY_CUES.dawn.packetReveal)) {
       const group = S.variants.seed_packet?.[0]?.group;
       if (group) {
         if (act === 'sow') {
@@ -1534,6 +1538,7 @@ addEventListener('beforeunload', () => {
   if (S.rain) { S.rain.geometry.dispose(); S.rain.material.dispose(); }
   sunLight.shadow.dispose();
   renderer.dispose();
+  THREE.Cache.clear();
 });
 
 init().catch((e) => {

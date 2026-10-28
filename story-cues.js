@@ -32,11 +32,14 @@ export const JOY_APPROACH = Object.freeze({
 });
 
 export const STORY_CUES = Object.freeze({
+  dawn: Object.freeze({ packetReveal: lineCue('dawn', 4, 'start', 0.81) }),
   sowing: Object.freeze({
     // The pair rises after their final line, then the chapter holds.
     rise: lineCue('sowing', 7, 'end', 0.53),
   }),
   storm: Object.freeze({
+    slip: lineCue('storm', 2),
+    regrip: lineCue('storm', 3, 'start', 0.2),
     leaving: lineCue('storm', 4, 'end', 0.2),
     tapeRun: lineCue('storm', 4, 'end', 1.0),
     lookBack: 25.5,
