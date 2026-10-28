@@ -1,164 +1,15 @@
 import * as THREE from 'three';
 import { BBModelLoader } from './vendor/BBModelLoader.js';
 import { directShot, lightFor } from './film-direction.js';
+import { createPerformer, sharedHandPoint, attachProp, attentionPose } from './actor-performance.js';
 import { Soundscape } from './soundscape.js';
+import { CHAPTERS as CH, STORY_DURATION as storyDuration, capturesFor, dialogueAt } from './screenplay.js';
+import { JOY_APPROACH, STORY_CUES } from './story-cues.js';
+import { createPresentation } from './presentation.js';
 
 /* Taller Than Us — a short film about one summer, told through a balcony garden.
-   The garden is visual subtext; the relationship lives in their imagined dialogue. */
-const line = (speaker, emotion, text, pauseAfter = 0) => ({ speaker, emotion, text, pauseAfter });
-const reactionFor = {
-  '🙂': '🤭', '😏': '😳', '😄': '🥹', '🤭': '😏', '😳': '😏',
-  '😤': '😤', '😔': '😶', '😶': '😔', '🥲': '🥹', '🥹': '🥲',
-};
-
-function paceDialogue(lines, duration, sceneId) {
-  // Editorial entrances/exits leave room for looks and physical actions.
-  const editorial = {
-    'weather-report': [[3,5.6],[7,9],[11,13.5],[16,18],[21,23.8]],
-    'weather-turns': [[3,6],[8,10],[13,16]],
-    storm: [[2,3.6],[3.9,5.5],[7,8.8],[10,12.2],[15,17]],
-    'morning-after': [[3,5],[7,9],[12,14],[18,20],[23,25],[28,30.5]],
-    'seven-am': [[2,4],[5,7],[11,13],[15,17],[21,23],[25,27]],
-    measure: [[2,4],[5,7],[8,10],[11,13],[16,18],[19,21],[24,26],[27,29]],
-    summer: [[2,3.8],[4,5.8],[7,9],[10,12],[14,16],[17,19],[20,22],[23,25],[27,29.2]],
-  }[sceneId];
-  const opening = sceneId === 'dawn' ? 2.15 : sceneId === 'good-things' ? 16 : 1.15;
-  const gap = sceneId === 'summer' ? 0.22 : 0.78;
-  const closing = {
-    dawn: 8, sowing: 7, days: 6, 'good-things': 2.2, 'weather-report': 8,
-    'weather-turns': 9, storm: 11, 'morning-after': 4, 'seven-am': 8,
-    measure: 2, bloom: 2, summer: 6,
-  }[sceneId] ?? 5;
-  const weight = (entry) => Math.max(1.65, entry.text.trim().split(/\s+/).length / 3.4 + 0.3);
-  const total = lines.reduce((sum, entry) => sum + weight(entry), 0);
-  const pauses = lines.reduce((sum, entry) => sum + entry.pauseAfter, 0);
-  const room = Math.max(1, duration - opening - closing - gap * Math.max(0, lines.length - 1) - pauses);
-  const pace = Math.min(1, room / total);
-  let at = opening;
-  const dialogue = lines.map((entry, index) => {
-    const next = lines[index + 1];
-    const listener = entry.speaker === 'Paresh' ? 'Anshita' : 'Paresh';
-    const listenerEmotion = next && next.speaker === listener ? next.emotion : reactionFor[entry.emotion];
-    const span = weight(entry) * pace;
-    const scheduled = { ...entry, start: editorial?.[index]?.[0] ?? at,
-      end: editorial?.[index]?.[1] ?? at + span, listener,
-      reaction: listenerEmotion || '🙂' };
-    at += span + gap + entry.pauseAfter;
-    return scheduled;
-  });
-  return dialogue;
-}
-
-const rawScenes = [
-  { id:'dawn', title:'Scene 1 · Dawn', dur:35, lines:[
-    line('Paresh','🙂','Are they awake?'),
-    line('Anshita','😏',"Only if we're worth opening up for."),
-    line('Paresh','😄',"It's early. Give us a chance."),
-    line('Anshita','🤭','Tell them yourself.',2.2),
-    line('Paresh','😄','I brought an idea.'),
-    line('Anshita','😏','You brought a packet.'),
-    line('Paresh','🙂','Ideas come in packets now.'),
-  ], sky:0x9fc7e8,sun:1.1,sunCol:0xfff2d8,rain:false,mood:'morning',tulip:'green',grow:null,seeds:false,bees:false,action:'invite',cam:[0,20,66],look:[-6,9,2] },
-
-  { id:'sowing', title:'Scene 2 · Morning, continuous', dur:35, lines:[
-    line('Paresh','🙂','Two centimetres.'), line('Anshita','😏','Is that deep enough?'),
-    line('Paresh','🙂','The packet says two.'), line('Anshita','😏',"The packet doesn't know us."),
-    line('Paresh','🤭','A little deeper, then.',2.5),
-    line('Anshita','🥲',"This corner's ours now."), line('Paresh','😏','The neighbours will contest it.'),
-    line('Anshita','🙂','Let them come and water it.'),
-  ], sky:0xa8d8f0,sun:1.25,sunCol:0xfff6e0,rain:false,mood:'morning',tulip:'green',grow:'sprout',seeds:true,bees:false,action:'sow',cam:[0,17,58],look:[0,7,6] },
-
-  { id:'days', title:'Scene 3 · Days, time-lapse', dur:40,
-    cues:{ petuniaBloomStart:10, petuniaBloomEnd:15 }, lines:[
-    line('Paresh','😄',"It's up! Anshita, it's up."), line('Anshita','🙂',"It's a green line."),
-    line('Paresh','😏',"It's a very confident green line."), line('Anshita','😏','Taller than the can by Sunday?'),
-    line('Paresh','🙂','Give it a week.',1.8), line('Anshita','😳','Paresh. The petunias did a thing.'),
-    line('Paresh','😄','Did they ask permission?'), line('Anshita','🙂',"They didn't."),
-    line('Paresh','🤭','Good. Neither did we.'),
-  ], sky:0x7ec8f5,sun:1.4,sunCol:0xffffff,rain:false,mood:'noon',tulip:'green',petunia:true,grow:'small',bees:true,action:'time_lapse',cam:[8,16,62],look:[6,9,2] },
-
-  { id:'good-things', title:'Scene 4 · Dusk', dur:40,
-    cues:{ tulipBloomStart:2.5, tulipBloomEnd:7, mograBloomStart:16, mograBloomEnd:21 }, lines:[
-    line('Paresh','🥲','Smell that.'), line('Anshita','😶',"Don't make me say it."),
-    line('Paresh','🙂',"You already did."), line('Anshita','🥹',"Fine. Best smell in the building."),
-    line('Paresh','😏','Better than the coffee?'), line('Anshita','😏',"Don't push it."),
-    line('Anshita','🥲',"Let's remember this."), line('Paresh','🙂','I will.'),
-  ], sky:0x8fd0f6,sun:1.45,sunCol:0xffffff,rain:false,mood:'gold',tulip:'bloom',petunia:true,mogra:true,grow:'small',bees:true,action:'sit_together',cam:[-8,16,62],look:[-6,9,2] },
-
-  { id:'weather-report', title:'Scene 5 · Morning', dur:30, lines:[
-    line('Anshita','😔',"You said you'd help."), line('Paresh','🙂',"I'm here."),
-    line('Anshita','😶','Then look at me.'), line('Paresh','😔','Just a minute.'),
-    line('Anshita','😔',"You said that before."),
-  ], sky:0xa8cfeb,sun:1.2,sunCol:0xfff0d2,rain:false,mood:'afternoon',tulip:'faded',petunia:true,mogra:true,grow:'small',bees:true,action:'distance',cam:[0,19,68],look:[0,10,0] },
-
-  { id:'weather-turns', title:'Scene 6 · Afternoon', dur:25, lines:[
-    line('Anshita','🙂','The petunias are dancing.'),
-    line('Paresh','😤',"They don't know what's coming."),
-    line('Anshita','😏','Then let them dance a minute.'),
-  ], sky:0x64778b,sun:0.55,sunCol:0xc4d1df,rain:false,mood:'storm',tulip:'faded',petunia:true,mogra:true,grow:'small',bees:false,action:'windup',cam:[0,20,62],look:[0,10,2] },
-
-  { id:'storm', title:'Scene 7 · Storm', dur:35, lines:[
-    line('Paresh','😤','Hold this!'), line('Anshita','😤',"I am!"),
-    line('Paresh','😤',"It's slipping."), line('Anshita','😔',"Don't let go."),
-    line('Paresh','😔','I need the tape.'),
-  ], sky:0x3a4a5e,sun:0.35,sunCol:0x9fb4cc,rain:true,mood:'storm',tulip:'faded',petunia:true,mogra:true,grow:'broken',bees:false,action:'storm',cam:[0,21,60],look:[0,9,2] },
-
-  { id:'morning-after', title:'Scene 8 · Morning after', dur:35, lines:[
-    line('Anshita','😶','You left.'), line('Paresh','😔','For the tape.'),
-    line('Anshita','😔','I needed you.'), line('Paresh','🥲','I know.'),
-    line('Anshita','🥲','Then hold it with me.'), line('Paresh','🙂',"I'm here."),
-  ], sky:0x9aaec0,sun:0.65,sunCol:0xe2e6e7,rain:false,mood:'dawn',tulip:'faded',petunia:true,mogra:true,grow:'broken',bees:false,action:'aftermath',cam:[0,18,58],look:[0,9,4] },
-
-  { id:'seven-am', title:'Scene 9 · Seven a.m., days later', dur:35, lines:[
-    line('Paresh','🙂','Not too tight.'), line('Anshita','🙂',"I know. Gently."),
-    line('Paresh','😔',"Still bent."), line('Anshita','🙂',"Still growing."),
-    line('Paresh','🥲','Tomorrow?'), line('Anshita','🙂','Seven. Bring the tape.'),
-  ], sky:0x86c2ee,sun:1.1,sunCol:0xfff4dd,rain:false,mood:'morning',tulip:null,petunia:true,mogra:true,grow:'repair',bees:false,action:'repair',cam:[0,15,52],look:[0,8,4] },
-
-  { id:'measure', title:'Scene 10 · Morning', dur:30, lines:[
-    line('Paresh','😄','Back to back. Measure us.'), line('Anshita','😏',"We'll need a ladder."),
-    line('Paresh','🙂',"We'll need a witness."), line('Anshita','😏',"The sun saw everything."),
-    line('Paresh','🙂','Taller than the railing.'), line('Anshita','🙂','Taller than the door.',3.6),
-    line('Paresh','🥹','...Taller than us.'), line('Anshita','🥹','Taller than us.'),
-  ], sky:0x7ec8f5,sun:1.5,sunCol:0xffffff,rain:false,mood:'noon',tulip:null,petunia:true,mogra:true,grow:'tall',bees:true,action:'measure',cam:[0,27,86],look:[0,20,0] },
-
-  { id:'bloom', title:'Scene 11 · Noon', dur:25, lines:[
-    line('Anshita','😄',"It's doing it."), line('Paresh','🥹','I know.'),
-    line('Anshita','😏',"Don't cry on the sunflower."), line('Paresh','😏',"I'm not crying. It's pollen."),
-    line('Anshita','🙂','Look. The bees are voting.'), line('Paresh','🙂','On what?'),
-    line('Anshita','🥹',"Whether we're worth opening up for."), line('Paresh','🥹','Looks like yes.'),
-  ], sky:0xf5b85e,sun:1.4,sunCol:0xffd9a0,rain:false,mood:'gold',tulip:null,petunia:true,mogra:true,grow:'bloom',bees:true,action:'joy',cam:[0,28,88],look:[0,22,0] },
-
-  { id:'summer', title:'Scene 12 · Dusk', dur:34, lines:[
-    line('Paresh','😏','Zero tomatoes.'), line('Anshita','😏','Zero capsicum.'),
-    line('Paresh','🤭','Next year?'), line('Anshita','🙂','Same corner. You and me.'),
-    line('Paresh','🥲','One more minute?'),
-    line('Anshita','🥲','One more minute.'), line('Paresh','😏','Okay. Two.'),
-    line('Anshita','🥲',"I'd live this summer again."),
-    line('Paresh','🥲','Especially the part with you.'),
-  ], sky:0xe9a765,sun:1.2,sunCol:0xffd9a0,rain:false,mood:'gold',tulip:null,petunia:true,mogra:true,tomato:true,capsicum:true,grow:'bloom',bees:true,action:'ending',cam:[0,23,80],look:[0,13,-2] },
-];
-
-// The supplied scene spans total 6:30; the explicitly requested final line adds
-// nine seconds to Scene 12 so its short turns and ending silence remain readable.
-const CH = rawScenes.map((scene) => ({ ...scene, visualDur: scene.visualDur ||
-  ({dawn:12,sowing:14,days:12,'good-things':12,'weather-report':12,'weather-turns':14,
-    storm:16,'morning-after':16,'seven-am':16,measure:14,bloom:18,summer:16}[scene.id]),
-  dialogue: paceDialogue(scene.lines, scene.dur, scene.id) }));
-const storyDuration = CH.reduce((sum, chapter) => sum + chapter.dur, 0);
-
-function capturesFor(chapter) {
-  const captures = { openingQuiet: chapter.dialogue[0].start / 2 };
-  chapter.dialogue.forEach((entry, index) => {
-    captures[`turn${index + 1}`] = (entry.start + entry.end) / 2;
-    const next = chapter.dialogue[index + 1];
-    captures[`quietAfter${index + 1}`] = next
-      ? (entry.end + next.start) / 2
-      : (entry.end + chapter.dur) / 2;
-  });
-  return captures;
-}
-
+   The garden is visual subtext; the relationship lives in their imagined dialogue.
+   Screenplay data/timing live in screenplay.js; this module stages them. */
 /* ---------- layout (world units: character ≈ 30 tall, balcony 60×40) ---------- */
 const POT_X = [-13, 0, 13], POT_Z = -1;
 // Authored deck surface: the props rig sits at y=4 and the authored pot/tile
@@ -175,8 +26,22 @@ const PA_BASE = [-20, 0, -6], AN_BASE = [20, 0, -6];
 /* Scene-2: keep the authored pot row intact while the kneeling pair travels
    first → second → third. The action times are anchored to the corresponding
    dialogue turns so seeking and replay produce the same handoff. */
-const SOW_ACTOR_OFFSET_X = 11.5, SOW_FIRST_ANSHITA_X = -10;
-const SOW_ACTOR_Z = 7, SOW_SOIL_Z = 3.8;
+const SOW_ACTOR_Z = -3.5, SOW_SOIL_Z = 0.8;
+/* The storm and repair chapters were originally staged by sliding the whole pot
+   and plant set 15 units toward the camera inside those chapters. The authored
+   set now keeps one geography everywhere, so the same action bay is expressed
+   only by reblocked actors and shots. `ACTION_SET_DEPTH` is the distance those
+   marks used to be displaced; the set itself never moves. */
+const ACTION_SET_DEPTH = 15;
+// Scene-10: the joy approach is a real four-step side gait over this window.
+// Both actors start from their blocking marks and settle on the shared pose.
+const JOY_MARKS = {
+  paresh: { startX: -17, endX: -7.5, z: 6, yaw: Math.PI + 0.4 },
+  anshita: { startX: 17, endX: 7.5, z: 6, yaw: Math.PI - 0.4 },
+};
+const STORM_RETURN_AT = STORY_CUES.storm.return;
+const STORM_KNEEL = { inStart: STORY_CUES.storm.kneelIn, inEnd: STORY_CUES.storm.kneelEnd,
+  settleEnd: STORY_CUES.storm.settleEnd };
 /* Scene-10 measure: the taller authored actor bends slightly at the knees and
    settles his torso so the paired head tops read level without lifting either
    actor off the deck. */
@@ -248,15 +113,24 @@ const lerp = (a, b, k) => a + (b - a) * k;
 function sowingPlan(chapter, storyT) {
   const lines = chapter.dialogue;
   const potSoilY = [10.9, 11.9, 12.9];
+  // Per-pot kneeling distance keeps each soil point on that actor's hand-reach
+  // sphere (Paresh and Anshita have different arm lengths and shoulder heights).
+  const actorOffset = [
+    { paresh: 12, anshita: 12 },
+    { paresh: 12, anshita: 12 },
+    { paresh: 12, anshita: 12 },
+  ];
   // Elliptical cuts between pots instead of sliding kneeling bodies along tiles.
   const moveToSecond = Number(storyT >= (lines[2]?.start ?? 7));
   const moveToThird = Number(storyT >= (lines[4]?.start ?? 14));
   const firstSecondX = lerp(POT_X[0], POT_X[1], moveToSecond);
   const focusX = lerp(firstSecondX, POT_X[2], moveToThird);
-  const firstSecondAnshitaX = lerp(SOW_FIRST_ANSHITA_X, POT_X[1] + SOW_ACTOR_OFFSET_X, moveToSecond);
+  const offsetIndex = moveToThird ? 2 : moveToSecond ? 1 : 0;
+  const offsets = actorOffset[offsetIndex];
   return {
-    focusX, soilY: lerp(lerp(potSoilY[0], potSoilY[1], moveToSecond), potSoilY[2], moveToThird),
-    anshitaX: lerp(firstSecondAnshitaX, POT_X[2] + SOW_ACTOR_OFFSET_X, moveToThird),
+    focusX, offsets, soilY: lerp(lerp(potSoilY[0], potSoilY[1], moveToSecond), potSoilY[2], moveToThird),
+    pareshX: focusX - offsets.paresh,
+    anshitaX: focusX + offsets.anshita,
     sown: [true, storyT >= (lines[3]?.end ?? 10), storyT >= (lines[4]?.end ?? 13)],
     share: smooth((storyT - (lines[5]?.start ?? 17)) / 0.7),
   };
@@ -306,7 +180,8 @@ const S = {
   paresh: null, anshita: null, rig: null, can: null, sunDisk: null, beeCount: 0,
   stage: null, door: null, stageLamp: null, roomLight: null, doorAngle: 0,
   laptopScreen: null, laptopKeyboard: null, laptopHome: null, laptopMode: 'hidden',
-  models: [], assetWarnings: [], bubbleLayout: {}, bubbleUpdateCount: 0, filmCard: null,
+  models: [], assetWarnings: [], filmCard: null,
+  performers: null, performance: { joy: {}, kneel: {}, contacts: {} },
 };
 
 window.__garden = {
@@ -316,10 +191,11 @@ window.__garden = {
   chapters: CH.map((c) => ({ id: c.id, title: c.title, duration: c.dur,
     visualDuration: c.visualDur, dialogue: c.dialogue.map(line => ({ ...line })),
     captures: capturesFor(c), cues: c.cues || null,
-     endCardStart: c.id === 'summer' ? c.dur - 4.4 : null,
-     endCardTitleStart: c.id === 'summer' ? c.dur - 3.2 : null })),
+     endCardStart: c.id === 'summer' ? STORY_CUES.summer.endCardStart : null,
+     endCardTitleStart: c.id === 'summer' ? STORY_CUES.summer.endCardTitleStart : null })),
   goto: (i) => enterChapter(i),
   seek, freeze, resume, state, dialogue: () => dialogueAt(S.chapter, S.t), continue: continueStory,
+  performance: () => S.performance,
 };
 
 function enterChapter(i) {
@@ -338,22 +214,26 @@ addEventListener('resize', () => {
 });
 
 /* ---------- UI ---------- */
-const h1 = document.querySelector('#caption h1');
-const announcement = document.getElementById('announcement');
-const counterEl = document.getElementById('counter');
 const barEl = document.getElementById('bar');
 const filmCard = document.getElementById('film-card');
 const filmCardContent = document.getElementById('film-card-content');
 const filmCardTitle = document.getElementById('film-card-title');
 const filmCardSubtitle = document.getElementById('film-card-subtitle');
 const timeSuper = document.getElementById('time-super');
-const dotsWrap = document.getElementById('dots');
-const playBtn = document.getElementById('play');
-const subtitles = document.getElementById('subtitles');
-const subtitleSpeaker = document.getElementById('subtitle-speaker');
-const subtitleText = document.getElementById('subtitle-text');
+const progressEl = document.getElementById('progress');
 const sound = new Soundscape();
 const soundBtn = document.getElementById('sound');
+const presentation = createPresentation({
+  chapters: CH,
+  handlers: {
+    enterChapter: (value, mode) => enterChapter(mode === 'relative' ? S.chapter + value : value),
+    continue: continueStory,
+    replay: () => { S.frozen = false; S.playing = true; enterChapter(0); setPlayLabel(); },
+    togglePlay: togglePlayback,
+    openNotes: () => freeze(true),
+    isPlaying: () => S.playing && !S.frozen,
+  },
+});
 soundBtn.onclick = async () => {
   try {
     const enabled = await sound.toggle();
@@ -365,275 +245,41 @@ soundBtn.onclick = async () => {
     soundBtn.textContent = 'Sound unavailable';
   }
 };
-let chromeTimer;
-function revealControls() {
-  document.body.classList.remove('cinema');
-  clearTimeout(chromeTimer);
-  if (S.playing && !S.frozen) chromeTimer = setTimeout(() => document.body.classList.add('cinema'), 2600);
-}
-addEventListener('pointermove', revealControls);
-addEventListener('pointerdown', revealControls);
-addEventListener('keydown', revealControls);
-document.addEventListener('focusin', revealControls);
-const speechBubbles = {
-  Paresh: document.getElementById('bubble-paresh'),
-  Anshita: document.getElementById('bubble-anshita'),
-};
-const reactionBubbles = {
-  Paresh: document.getElementById('reaction-paresh'),
-  Anshita: document.getElementById('reaction-anshita'),
-};
-const dots = [];
-let captionChapter = -1, dialogueKey = '';
-
-function dialogueAt(ch, seconds) {
-  const c = CH[ch];
-  const index = c.dialogue.findIndex(line => seconds >= line.start && seconds < line.end);
-  const line = c.dialogue[index];
-  let quietAfter = null, nextTurn = null;
-  if (!line) {
-    for (let i = 0; i < c.dialogue.length; i++) {
-      if (c.dialogue[i].end <= seconds) quietAfter = i;
-      if (nextTurn === null && c.dialogue[i].start > seconds) nextTurn = i;
-    }
-  }
-  return { chapter: ch, index, phase: line ? 'line' : 'quiet',
-    speaker: line?.speaker || null, text: line?.text || '', listener: line?.listener || null,
-    reaction: line?.reaction || null, emotion: line?.emotion || null,
-    start: line?.start ?? null, end: line?.end ?? null,
-    quiet: !line, quietAfter, nextTurn,
-    turnCount: c.dialogue.length };
-}
 
 function updateDialogue() {
-  const d = dialogueAt(S.chapter, S.t);
-  const key = `${S.chapter}:${d.index}:${d.text}:${d.reaction}`;
-  if (key === dialogueKey) return; // No DOM/live-region writes every frame.
-  dialogueKey = key;
-  subtitleSpeaker.textContent = d.speaker || '';
-  subtitleText.textContent = d.text;
-  subtitles.classList.toggle('visible', d.phase === 'line');
-  for (const name of ['Paresh','Anshita']) {
-    const bubble = speechBubbles[name], reaction = reactionBubbles[name];
-    const speaking = d.phase === 'line' && d.speaker === name;
-    const reacting = d.phase === 'line' && d.listener === name;
-    bubble.querySelector('.bubble-text').textContent = speaking ? d.text : '';
-    bubble.classList.toggle('visible', speaking);
-    reaction.textContent = reacting ? d.reaction : '';
-    reaction.classList.toggle('visible', reacting);
-  }
-  // Announce spoken text once; the decorative listener reaction is aria-hidden.
-  announcement.textContent = d.phase === 'line' ? `${d.speaker}: ${d.text}` : '';
+  presentation.updateDialogue(dialogueAt(S.chapter, S.t));
 }
 
-const _bubblePoint = new THREE.Vector3();
-const _bubbleWorldPoint = new THREE.Vector3();
-function projectHead(character, name) {
-  if (!character) return null;
-  camera.updateMatrixWorld(true);
-  character.updateWorldMatrix(true, true);
-  const key = name === 'Paresh' ? 'p' : 'a';
-  const anchor = S.rig?.base?.[`${key}HeadAnchor`];
-  const body = S.rig?.[`${key}Body`];
-  const bodyBase = S.rig?.base?.[`${key}Body`];
-  if (anchor && body && bodyBase) {
-    // Project the authored head pivot in character-root space, compensating
-    // only for the torso's deliberate kneel drop. Head nods/yaw do not drag UI.
-    _bubblePoint.fromArray(anchor);
-    _bubblePoint.y += body.position.y - bodyBase.position[1];
-    character.localToWorld(_bubblePoint);
-  } else {
-    const head = character.getObjectByName('head');
-    if (head) head.getWorldPosition(_bubblePoint);
-    else _bubblePoint.set(character.position.x, character.position.y + 28, character.position.z);
-  }
-  _bubblePoint.y += 4;
-  _bubblePoint.project(camera);
-  if (_bubblePoint.z < -1 || _bubblePoint.z > 1 || Math.abs(_bubblePoint.x) > 1.08 || Math.abs(_bubblePoint.y) > 1.08) return null;
-  return { x: (_bubblePoint.x * 0.5 + 0.5) * innerWidth,
-    y: (-_bubblePoint.y * 0.5 + 0.5) * innerHeight };
+function updateCaption() {
+  presentation.updateCaption(S.chapter);
+  updateDialogue();
 }
 
-function projectWorldPoint(point) {
-  _bubbleWorldPoint.copy(point).project(camera);
-  if (_bubbleWorldPoint.z < -1 || _bubbleWorldPoint.z > 1 ||
-      Math.abs(_bubbleWorldPoint.x) > 1.12 || Math.abs(_bubbleWorldPoint.y) > 1.12) return null;
-  return { x: (_bubbleWorldPoint.x * 0.5 + 0.5) * innerWidth,
-    y: (-_bubbleWorldPoint.y * 0.5 + 0.5) * innerHeight };
+function setPlayLabel() {
+  const playing = S.playing && !S.frozen;
+  presentation.setPlayLabel(playing);
+  if (!playing) sound.silence();
+  presentation.revealControls(playing);
 }
 
-function screenRectAround(point, halfWidth, halfHeight) {
-  return { left: point.x - halfWidth, right: point.x + halfWidth,
-    top: point.y - halfHeight, bottom: point.y + halfHeight };
-}
-
-function rectanglesOverlap(a, b) {
-  return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
-}
-
-function rectOverlapArea(a, b) {
-  if (!rectanglesOverlap(a, b)) return 0;
-  return Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) *
-    Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
-}
-
-function getBubbleObstacles() {
-  const obstacles = [];
-  const addDOM = (selector) => {
-    const element = document.querySelector(selector);
-    if (!element) return;
-    const style = getComputedStyle(element), r = element.getBoundingClientRect();
-    if (style.display === 'none' || style.visibility === 'hidden' || r.width < 1 || r.height < 1) return;
-    obstacles.push({ left: r.left, right: r.right, top: r.top, bottom: r.bottom });
-  };
-  for (const selector of ['#title', '#counter', '#story-notes', '#caption', '#time-super', '#ui', '#dots', '#film-card']) addDOM(selector);
-
-  for (const [name, character] of [['Paresh', S.paresh], ['Anshita', S.anshita]]) {
-    const head = projectHead(character, name);
-    if (head) obstacles.push(screenRectAround(head, innerWidth <= 620 ? 34 : 42, innerWidth <= 620 ? 31 : 38));
-    character?.updateWorldMatrix(true, true);
-    character?.traverse((node) => {
-      if (!node.isBone || !node.name.startsWith('hand_') || !node.name.endsWith('__pivot')) return;
-      node.getWorldPosition(_bubbleWorldPoint);
-      const hand = projectWorldPoint(_bubbleWorldPoint);
-      if (hand) obstacles.push(screenRectAround(hand, innerWidth <= 620 ? 18 : 22, innerWidth <= 620 ? 19 : 23));
-    });
-  }
-
-  // Protect visible plant/action silhouettes as well as the characters. These
-  // projected rectangles are only placement constraints; bubble tests below
-  // use the browser's actual DOMClientRect geometry.
-  for (const [name, variants] of Object.entries(S.variants)) {
-    if (!/tulip|petunia|mogra|stage_|seed_packet|tape|support/.test(name)) continue;
-    for (const { group } of variants) {
-      if (!group?.visible) continue;
-      group.getWorldPosition(_bubbleWorldPoint);
-      _bubbleWorldPoint.y += /stage_/.test(name) ? 10 : /mogra/.test(name) ? 12 : 8;
-      const point = projectWorldPoint(_bubbleWorldPoint);
-      if (point) obstacles.push(screenRectAround(point, innerWidth <= 620 ? 19 : 25, innerWidth <= 620 ? 24 : 31));
-    }
-  }
-  return obstacles;
-}
-
-function placeSpeechBubbles() {
-  S.bubbleUpdateCount++;
-  S.bubbleLayout = {};
-  if (!S.paresh || !S.anshita) return;
-  const d = dialogueAt(S.chapter, S.t);
-  // Never expose a previous speaker/listener's inline coordinates. A line
-  // boundary can switch the listener to the other character; keep every bubble
-  // hidden until its new projected position has been written.
-  for (const name of ['Paresh','Anshita']) {
-    const speaking = d.phase === 'line' && d.speaker === name;
-    const reacting = d.phase === 'line' && d.listener === name;
-    const speech = speechBubbles[name], reaction = reactionBubbles[name];
-    speech.style.visibility = 'hidden';
-    reaction.style.visibility = 'hidden';
-    if (!speaking) { speech.style.left = ''; speech.style.top = ''; }
-    if (!reacting) { reaction.style.left = ''; reaction.style.top = ''; }
-    reaction.style.opacity = '0';
-  }
-  if (d.phase !== 'line') {
-    return;
-  }
-  const chars = { Paresh: S.paresh, Anshita: S.anshita };
-  const placed = [];
-  const obstacles = getBubbleObstacles();
-  const bottomSafe = innerWidth <= 620 ? 126 : 104;
-  const topSafe = Math.max(64, innerWidth <= 620 ? 68 : 54);
-  // Place the listener reaction first at a fixed identity-side offset from its
-  // stable root/head projection. The speaker's candidate layout then avoids it;
-  // the emoji itself never hops between obstacle-selected positions.
-  for (const name of [d.listener, d.speaker]) {
-    const speaking = d.speaker === name;
-    const reacting = d.listener === name;
-    const point = projectHead(chars[name], name);
-    const el = speaking ? speechBubbles[name] : reactionBubbles[name];
-    if (!point) { el.style.left = ''; el.style.top = ''; continue; }
-    const measured = el.getBoundingClientRect();
-    const width = measured.width || (speaking ? 240 : 42);
-    const height = measured.height || (speaking ? 82 : 42);
-    if (reacting) {
-      const side = name === 'Paresh' ? -1 : 1;
-      const x = clamp(point.x + side * (innerWidth <= 620 ? 42 : 48),
-        width * 0.5 + 8, innerWidth - width * 0.5 - 8);
-      const y = clamp(point.y - (innerWidth <= 620 ? 36 : 40),
-        height + topSafe, innerHeight - bottomSafe);
-      el.style.left = `${x}px`;
-      el.style.top = `${y}px`;
-      el.style.visibility = 'visible';
-      const age = Math.max(0, S.t - d.start);
-      // A new listener fades in at its own anchor after the quiet/boundary
-      // change. This is story-time-derived (seek/replay safe), not CSS motion.
-      el.style.opacity = String(reduced ? 1 : smooth((age - 0.06) / 0.24));
-      const actual = el.getBoundingClientRect();
-      const rect = { left: actual.left, right: actual.right, top: actual.top, bottom: actual.bottom };
-      placed.push(rect);
-      S.bubbleLayout[name] = { role: 'listener', element: el.id,
-        anchor: { ...point }, x, y, width: actual.width, height: actual.height, rect,
-        speaker: d.speaker, listener: d.listener, chapter: S.chapter, time: S.t };
-      continue;
-    }
-    const outward = point.x < innerWidth / 2 ? -1 : 1;
-    const shift = Math.max(speaking ? 42 : 26, Math.min(72, width * 0.2));
-    const baseBottom = point.y - (speaking ? 42 : 34);
-    const candidates = [
-      { x: point.x + outward * shift, y: baseBottom },
-      { x: point.x - outward * shift, y: baseBottom },
-      { x: point.x, y: baseBottom - 45 },
-      { x: point.x + outward * shift, y: baseBottom - 64 },
-      { x: point.x - outward * shift, y: baseBottom - 64 },
-      { x: point.x, y: baseBottom - 92 },
-      { x: point.x + outward * shift, y: point.y + 30 },
-      { x: point.x - outward * shift, y: point.y + 30 },
-    ];
-    const firstX = clamp(candidates[0].x, width * 0.5 + 8, innerWidth - width * 0.5 - 8);
-    const firstY = clamp(candidates[0].y, height + topSafe, innerHeight - bottomSafe);
-    el.style.left = `${firstX}px`;
-    el.style.top = `${firstY}px`;
-    const firstRect = el.getBoundingClientRect();
-    const offsetX = firstRect.left - firstX, offsetY = firstRect.top - firstY;
-    let best = null;
-    for (const candidate of candidates) {
-      const x = clamp(candidate.x, width * 0.5 + 8, innerWidth - width * 0.5 - 8);
-      const y = clamp(candidate.y, height + topSafe, innerHeight - bottomSafe);
-      // The translation below comes from the actual DOMRect measured above;
-      // all candidates share the same fixed bubble transform and dimensions.
-      const rect = { left: x + offsetX, right: x + offsetX + width,
-        top: y + offsetY, bottom: y + offsetY + height };
-      let penalty = Math.hypot((rect.left + rect.right) / 2 - point.x, rect.bottom - baseBottom);
-      for (const other of placed) penalty += rectOverlapArea(rect, other) * 100000 + (rectanglesOverlap(rect, other) ? 1000000 : 0);
-      for (const obstacle of obstacles) penalty += rectOverlapArea(rect, obstacle) * 10000 + (rectanglesOverlap(rect, obstacle) ? 100000 : 0);
-      if (best === null || penalty < best.penalty) best = { x, y, rect, penalty };
-    }
-    el.style.left = `${best.x}px`;
-    el.style.top = `${best.y}px`;
-    el.style.visibility = 'visible';
-    // Fade only the reaction's opacity at the new listener anchor. This is a
-    // pure function of story time, not a CSS position transition, so seek,
-    // pause, replay and quiet beats remain deterministic without screen flight.
-    el.style.opacity = '';
-    const actual = el.getBoundingClientRect();
-    const rect = { left: actual.left, right: actual.right, top: actual.top, bottom: actual.bottom };
-    placed.push(rect);
-    S.bubbleLayout[name] = { role: 'speaker', element: el.id,
-      anchor: { ...point }, x: best.x, y: best.y, width: actual.width, height: actual.height, rect,
-      speaker: d.speaker, listener: d.listener, chapter: S.chapter, time: S.t };
-  }
+function togglePlayback() {
+  if (S.frozen) { resume(); return; }
+  S.playing = !S.playing;
+  setPlayLabel();
+  if (S.ready) { applyState(S.chapter, S.t); renderer.render(scene, camera); }
 }
 
 function updateFilmCard(ch, seconds) {
   const chapter = CH[ch];
   const titleCard = chapter.id === 'dawn' && seconds < 2.15;
-  const endingCard = chapter.id === 'summer' && seconds >= chapter.dur - 4.4;
+  const endingCard = chapter.id === 'summer' && seconds >= STORY_CUES.summer.endCardStart;
   if (!titleCard && !endingCard) {
     filmCard.style.visibility = 'hidden';
     filmCard.style.opacity = '0';
     S.filmCard = null;
     return;
   }
-  const endStart = chapter.dur - 4.4;
+  const endStart = chapter.id === 'summer' ? STORY_CUES.summer.endCardStart : chapter.dur - 4.4;
   const opacity = titleCard ? 1 - smooth((seconds - 0.45) / 1.7)
     : smooth((seconds - endStart) / 1.05);
   const titleOpacity = titleCard ? opacity : smooth((seconds - endStart - 1.2) / 0.45);
@@ -643,28 +289,6 @@ function updateFilmCard(ch, seconds) {
   filmCard.style.opacity = String(opacity);
   filmCardContent.style.opacity = String(titleOpacity);
   S.filmCard = { kind: endingCard ? 'end' : 'title', opacity, titleOpacity };
-}
-
-function updateCaption() {
-  const c = CH[S.chapter];
-  if (captionChapter !== S.chapter) {
-    captionChapter = S.chapter;
-    h1.textContent = c.title;
-    dots.forEach((d, i) => {
-      d.classList.toggle('active', i === S.chapter);
-      d.setAttribute('aria-selected', String(i === S.chapter));
-    });
-    counterEl.textContent = (S.chapter + 1) + ' / ' + CH.length;
-  }
-  updateDialogue();
-}
-
-function setPlayLabel() {
-  const playing = S.playing && !S.frozen;
-  playBtn.textContent = playing ? 'Pause' : 'Play';
-  playBtn.setAttribute('aria-label', playing ? 'Pause story' : 'Play story');
-  if (!playing) sound.silence();
-  revealControls();
 }
 
 function continueStory() {
@@ -735,6 +359,13 @@ function placeFlowers(gf) {
     const bone = gf.scene.getObjectByName(`${plant}_${part}__pivot`);
     if (bone) bone.userData.restY = bone.position.y;
   }
+  // The nameplates are authored decoration hidden every frame; resolve their
+  // pivots once instead of walking the flower rig during animation.
+  S.flowersRoot = S.variants.tomato_no_yield?.[0]?.meshes[0]?.parent || gf.scene;
+  S.flowerMarkers = ['tomato', 'capsicum'].map((plant) => ({
+    label: S.flowersRoot.getObjectByName(plant + '_marker__pivot'),
+    post: S.flowersRoot.getObjectByName(plant + '_marker_post__pivot'),
+  }));
 }
 /* ---------- care props (garden-care) ---------- */
 function placeCare(gcare) {
@@ -790,6 +421,15 @@ function placePlant(care, classic, x, z, index) {
   }
   const plant = { care: care.scene, classic: classic.scene, index, hinge: {} };
   plant.flower = classic.scene.getObjectByName('bloom_flower');
+  // Static authored rig lookups are done once; per-frame visibility work only
+  // flips the cached nodes and their precomputed meshes.
+  plant.hiddenClassicSoil = ['sprout_soil__pivot', 'grow_soil__pivot', 'bloom_soil__pivot']
+    .map((n) => classic.scene.getObjectByName(n));
+  plant.repairWraps = [
+    ['repair_stake', 3], ['repair_tie_lo', 4], ['repair_tie_hi', 6],
+    ['repair_tape_1', 5 + index * 0.7], ['repair_tape_2', 6 + index * 0.7],
+    ['repair_tape_strand', 6],
+  ].map(([name, at]) => ({ node: care.scene.getObjectByName(name + '__pivot'), at }));
   for (const n of ['stage_small', 'stage_broken', 'stage_repair', 'stage_healed', 'stage_tall_green']) {
     addVariant(n, care.scene, care.scene.getObjectByName(n));
   }
@@ -853,7 +493,16 @@ const _gazeDirection = new THREE.Vector3(), _gazeForward = new THREE.Vector3(0, 
 const _gazeRotation = new THREE.Quaternion();
 const _sowSoilTarget = new THREE.Vector3(0, 12, -1);
 const _packetWorldTarget = new THREE.Vector3(), _partnerHandWorldTarget = new THREE.Vector3();
-const _restHand = new THREE.Vector3();
+const _headWorkTarget = new THREE.Vector3();
+const _headAnchorPoint = new THREE.Vector3();
+// Reused per-frame scratch vectors. Contact results are copied to arrays before
+// the next frame, so these never leak between chapter seeks.
+const _contactGoal = new THREE.Vector3(), _hingeWorld = new THREE.Vector3();
+const _sowP = new THREE.Vector3(), _sowA = new THREE.Vector3(), _sowShared = new THREE.Vector3();
+const _repairP = new THREE.Vector3(), _repairA = new THREE.Vector3();
+const _stormL = new THREE.Vector3(), _stormR = new THREE.Vector3();
+const _laptopTarget = new THREE.Vector3(), _laptopCenter = new THREE.Vector3();
+const _attachHandPoint = new THREE.Vector3();
 const NEUTRAL = { aLx: 0, aRx: 0, aLz: 0.12, aRz: -0.12, hx: 0, hy: 0 };
 
 function aimAtLocalNegativeZ(bone, targetWorld) {
@@ -911,10 +560,11 @@ function placeLaptopAt(target, targetRotationZ, blend = 1) {
   const angle = lerp(S.laptopHome.rotation.z, targetRotationZ, blend);
   S.laptop.rotation.set(0, 0, angle);
   S.paresh.updateWorldMatrix(true, false);
-  const localTarget = S.paresh.worldToLocal(new THREE.Vector3(...target));
-  const center = LAPTOP_LOCAL_CENTER.clone().applyEuler(S.laptop.rotation);
-  const destination = localTarget.sub(center);
-  S.laptop.position.copy(S.laptopHome.position).lerp(destination, blend);
+  _laptopTarget.fromArray(target);
+  S.paresh.worldToLocal(_laptopTarget);
+  _laptopCenter.copy(LAPTOP_LOCAL_CENTER).applyEuler(S.laptop.rotation);
+  _laptopTarget.sub(_laptopCenter);
+  S.laptop.position.copy(S.laptopHome.position).lerp(_laptopTarget, blend);
 }
 
 function updateLaptop(ch, storyT) {
@@ -975,10 +625,34 @@ function setGroundedKneel(body, bodyBase, legs, blend) {
   body.rotation.set(...bodyBase.rotation);
 }
 
+/**
+ * Replace every aim result in the contact tree with a final-pose measurement
+ * from its loaded named hand pivot. This runs after all body/head/arm/prop
+ * transforms so performance().contacts can never claim a contact the rendered
+ * rig does not have.
+ */
+function measureContactTree(node, performers) {
+  if (!node || typeof node !== 'object') return;
+  for (const [key, value] of Object.entries(node)) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
+    const owner = value.owner ? performers[String(value.owner).toLowerCase()] : null;
+    if (value.side && owner) {
+      node[key] = owner.measureAim(value);
+    } else {
+      measureContactTree(value, performers);
+    }
+  }
+}
+
 function applyState(ch, t) {
   const c = CH[ch];
   const act = c.action;
   const storyT = t;
+  S.performance.contacts = {};
+  S.performance.joy.paresh = null;
+  S.performance.joy.anshita = null;
+  S.performance.kneel.paresh = null;
+  S.performance.kneel.anshita = null;
   const sow = ch === 1 ? sowingPlan(c, storyT) : null;
   // Keep accepted physical cue times exactly (repair t2/t5/t10 etc). Once its
   // original visual beat is complete, let it rest while the dialogue breathes.
@@ -987,27 +661,22 @@ function applyState(ch, t) {
   const k = clamp(t / c.visualDur, 0, 1);
   const skyT = 1; // Editorial cuts include the new scene's light, not yesterday's sky.
 
-  // Move complete authored assemblies together for the action shots.
-  // Continuous entrance/exit staging, no replacement pots or plant geometry.
-  // Reblocking happens at chapter cuts, never by visibly sliding the set.
-  const foreground = ch >= 6 && ch <= 8 ? 1 : 0;
+  // Authored set geography is chapter-invariant: every pot and plant keeps its
+  // authored base. Growth, breakage, bloom scale and visibility may change,
+  // never the world position of the garden. Action chapters reblock actors and
+  // cameras instead of sliding the set forward.
   for (const {bone, base} of S.potPivots || []) {
     bone.position.copy(base);
-    bone.position.z += 15 * foreground;
   }
   for (const plant of S.plants) {
     plant.care.position.x = plant.classic.position.x = POT_X[plant.index];
-    plant.care.position.z = plant.classic.position.z = POT_Z + 15 * foreground;
+    plant.care.position.z = plant.classic.position.z = POT_Z;
   }
   for (const name of ['tulip_green','tulip_bloom','tulip_faded','petunia_bloom','mogra_bloom','tomato_no_yield','capsicum_no_yield']) {
     const key = name.split('_')[0], spot = SPOTS[key];
     for (const {group} of S.variants[name] || []) {
       group.position.fromArray(spot);
-      group.position.z -= 29 * foreground;
       group.rotation.z = reduced ? 0 : Math.sin(storyT * 1.8 + spot[0]) * (ch === 5 ? 0.055 : 0.008);
-      // Background attempt foliage must not masquerade as a fallen sunflower.
-      if (key === 'tomato') group.position.x -= 12 * foreground;
-      if (key === 'capsicum') group.position.x += 12 * foreground;
     }
   }
 
@@ -1062,17 +731,14 @@ function applyState(ch, t) {
   // Their outcome is not narrated until the ending; nothing is newly planted there.
   setVis('tomato_no_yield', ch >= 2);
   setVis('capsicum_no_yield', ch >= 2);
-  const flowersRoot = S.variants.tomato_no_yield[0].meshes[0].parent;
-  for (const plant of ['tomato','capsicum']) {
-    const label = flowersRoot.getObjectByName(plant + '_marker__pivot');
+  for (const { label, post } of S.flowerMarkers) {
     // Override the parent variant's real meshes each frame: earlier attempts
     // remain leafy background plants, with nameplates revealed only at the end.
     // These are authored nameplate meshes, not screenplay props. The dialogue
     // already conveys the no-yield aside; keep the unapproved labels out of the
     // couple's faces, torsos and speech bubbles.
-    setGroupVisible(flowersRoot, label, false);
-    const post = flowersRoot.getObjectByName(plant + '_marker_post__pivot');
-    setGroupVisible(flowersRoot, post, false);
+    setGroupVisible(S.flowersRoot, label, false);
+    setGroupVisible(S.flowersRoot, post, false);
   }
   setVis('seed_packet', !!c.seeds || (ch === 0 && storyT >= 16));
   if (act === 'sow' && c.seeds) {
@@ -1084,14 +750,14 @@ function applyState(ch, t) {
     (S.variants.seeds || []).forEach(({group, meshes}, i) => {
       const pot = seedPot[i];
       const visible = pot !== undefined && sow.sown[pot];
-      if (pot !== undefined) group.position.set(POT_X[pot], soilY[pot], POT_Z + SOW_SOIL_Z);
+      if (pot !== undefined) group.position.set(POT_X[pot], soilY[pot], SOW_SOIL_Z);
       group.visible = visible;
       meshes.forEach(mesh => { mesh.visible = visible; });
       group.scale.setScalar(visible ? 1.05 : 1);
     });
   } else setVis('seeds', !!c.seeds);
-  setVis('tape', (ch === 6 && storyT >= 26) || (ch === 7 && (storyT < 2 || storyT >= 29)) || ch === 8);
-  setVis('support', (ch === 6 && storyT >= 26) || (ch === 7 && t < 2) || (ch === 8 && t < 3));
+  setVis('tape', (ch === 6 && storyT >= STORY_CUES.storm.tapeRun) || (ch === 7 && (storyT < 2 || storyT >= 29)) || ch === 8);
+  setVis('support', (ch === 6 && storyT >= STORY_CUES.storm.support) || (ch === 7 && t < 2) || (ch === 8 && t < 3));
   for (const n of ['seed_packet','tape','support']) {
     const g = S.variants[n][0].group;
     g.position.fromArray(SPOTS[n]);
@@ -1100,7 +766,7 @@ function applyState(ch, t) {
   setVis('stage_sprout', false);
   setVis('stage_small', c.grow === 'small');
   setVis('stage_broken', c.grow === 'broken' || (c.grow === 'repair' && t < 2));
-  setVis('stage_repair', c.grow === 'repair' && t >= 2);
+  setVis('stage_repair', c.grow === 'repair' && t >= STORY_CUES['seven-am'].repairVisible);
   setVis('stage_healed', c.grow === 'healed');
   setVis('stage_tall_green', c.grow === 'tall');
   setVis('stage_bloom', c.grow === 'bloom');
@@ -1167,7 +833,7 @@ function applyState(ch, t) {
   const held = c.grow === 'broken' ? fall : c.grow === 'repair' ? 1 - smooth((t - 2) / 2) : 0;
   for (const p of S.plants) {
     // Use the pot rig's real soil, rather than layering classic stage soil on it.
-    for (const n of ['sprout_soil__pivot','grow_soil__pivot','bloom_soil__pivot']) setGroupVisible(p.classic, p.classic.getObjectByName(n), false);
+    for (const node of p.hiddenClassicSoil) setGroupVisible(p.classic, node, false);
     const h = p.hinge;
     const liftAt = 5.5 + p.index * 0.7; // each primary wrap precedes lifting
     const bend = c.grow === 'broken' ? fall : c.grow === 'repair' ? 1 - smooth((t - liftAt) / (10 - liftAt)) : 0;
@@ -1180,8 +846,8 @@ function applyState(ch, t) {
     if (h.tall) h.tall.rotation.z = 0;
     // Supports are placed first; the matching wraps follow the couple's work,
     // rather than appearing fully repaired at the chapter cut.
-    for (const [name, at] of [['repair_stake',3],['repair_tie_lo',4],['repair_tie_hi',6],['repair_tape_1',5 + p.index * 0.7],['repair_tape_2',6 + p.index * 0.7],['repair_tape_strand',6]]) {
-      setGroupVisible(p.care, p.care.getObjectByName(name + '__pivot'), c.grow === 'repair' && t >= at);
+    for (const { node, at } of p.repairWraps) {
+      setGroupVisible(p.care, node, c.grow === 'repair' && t >= at);
     }
      if (p.flower) p.flower.scale.setScalar(ch === 10 ? lerp(0.18, 1, smooth(t / 7)) : 1);
     // Fixed camera-facing joint planes, same lower stalk/position through repair.
@@ -1192,79 +858,114 @@ function applyState(ch, t) {
 
   // the couple: position, facing and authored rig poses
   if (S.paresh && S.anshita) {
+    const P = S.performers.paresh, A = S.performers.anshita;
+    // Every authored bone this frame is rebuilt from the captured base; no
+    // previous-frame pose can leak across a seek.
+    P.reset(); A.reset();
     const actionShot = ch >= 6 && ch <= 8;
     const joyful = act === 'joy';
     const close = ['sow','repair','tend','sit_together','aftermath','ending'].includes(act);
-    const joyApproach = joyful ? smooth((storyT - 15.5) / 1.6) : 0;
+    const joyApproach = joyful ? smooth((storyT - JOY_APPROACH.start) / (JOY_APPROACH.end - JOY_APPROACH.start)) : 0;
     // At the tall-green beat they step in front of the leafy backdrop together;
     // otherwise its authored leaves cross their faces during the conversation.
-    const txP = act === 'sow' ? sow.focusX - SOW_ACTOR_OFFSET_X : act === 'aftermath' ? -8 : act === 'storm' ? 4 : actionShot ? -22 : act === 'distance' ? -24 :
-      act === 'measure' ? -3 : close ? -8 : ch === 9 ? -18 : joyful ? lerp(-17, -7.5, joyApproach) : PA_BASE[0];
-    const txA = act === 'sow' ? sow.anshitaX : act === 'aftermath' ? 8 : act === 'storm' ? -10 : actionShot ? 22 : act === 'distance' ? 24 :
-      act === 'measure' ? 3 : close ? 8 : ch === 9 ? 18 : joyful ? lerp(17, 7.5, joyApproach) : AN_BASE[0];
-    const tz = act === 'sow' ? SOW_ACTOR_Z : act === 'aftermath' ? 5 : act === 'storm' ? 8 : actionShot ? (ch === 8 ? 10 : 5) : act === 'distance' ? 2 :
+    const txP = act === 'sow' ? sow.pareshX : act === 'aftermath' ? -8 :
+      act === 'storm' ? 4 : act === 'repair' ? -10 : actionShot ? -22 : act === 'distance' ? -24 :
+      act === 'measure' ? -3 : close ? -8 : ch === 9 ? -18 : joyful ? JOY_MARKS.paresh.startX : PA_BASE[0];
+    const txA = act === 'sow' ? sow.anshitaX : act === 'aftermath' ? 8 :
+      act === 'storm' ? -11.5 : act === 'repair' ? 10 : actionShot ? 22 : act === 'distance' ? 24 :
+      act === 'measure' ? 3 : close ? 8 : ch === 9 ? 18 : joyful ? JOY_MARKS.anshita.startX : AN_BASE[0];
+    const tz = act === 'sow' ? SOW_ACTOR_Z : act === 'aftermath' ? 5 :
+      act === 'storm' ? 5.4 : act === 'repair' ? 9.0 : actionShot ? (ch === 8 ? 9.0 : 5) : act === 'distance' ? 2 :
       act === 'measure' ? 12.5 : close ? 5 : ch === 9 ? 8 : joyful ? 6 : PA_BASE[2];
     // Blocking is established at the cut. Do not glide in from generic bases.
     const et = 1;
     const bob = 0; // Root height stays grounded; breathing belongs to the torso.
     const pose = poseFor(act, t);
-    // deterministic from the fixed bases (no frame-to-frame accumulation)
-    const fromP = ch === 6 ? 4 : ch >= 7 && ch <= 9 ? -22 : PA_BASE[0];
-    const fromA = ch === 6 ? -10 : ch >= 7 && ch <= 9 ? 22 : AN_BASE[0];
-    const fromZ = ch === 6 ? 8 : ch === 8 ? 10 : ch === 9 ? 5 : PA_BASE[2];
-    S.paresh.position.x = lerp(fromP, txP, et);
-    S.paresh.position.z = lerp(fromZ, tz, et);
-    S.anshita.position.x = lerp(fromA, txA, et);
-    S.anshita.position.z = lerp(fromZ, tz, et);
-    S.paresh.position.y = act === 'sow' || act === 'storm' || act === 'measure' ? DECK_TOP : 4 + bob * 0.5;
-    S.anshita.position.y = act === 'sow' || act === 'storm' || act === 'measure' ? DECK_TOP : 4 + bob * 0.4;
-    const stormReturn = ch === 6 ? Number(storyT >= 26) : 0;
+    S.paresh.position.set(txP, act === 'sow' || act === 'storm' || act === 'measure' || joyful
+      ? DECK_TOP : 4 + bob * 0.5, tz);
+    S.anshita.position.set(txA, act === 'sow' || act === 'storm' || act === 'measure' || joyful
+      ? DECK_TOP : 4 + bob * 0.4, tz);
     if (ch === 4) {
-      const inside = 1;
-      S.paresh.position.x = lerp(-24, -20, inside);
-      S.paresh.position.z = lerp(2, -22, inside);
+      // Paresh is at the room table; the camera work is in film-direction.js.
+      S.paresh.position.set(-20, 4, -22);
     } else if (ch === 6) {
-      const leaves = Number(storyT >= 18);
-      const returns = stormReturn;
-      const roomX = lerp(4, -20, leaves), roomZ = lerp(8, -22, leaves);
-      // Return on her side of the first pot as written; the close camera moves
-      // off-axis to separate their silhouettes without moving the hand target.
-      S.paresh.position.x = lerp(roomX, -3.5, returns);
-      S.paresh.position.z = lerp(roomZ, 5.5, returns);
-      S.anshita.position.x = -10;
-      S.anshita.position.z = 8;
+      // He holds with her through "Don't let go", fetches the tape on the cut at
+      // 18 s, then returns to her side on a second cut at 24.5 s. The tape run
+      // is an editorial cut, not a root slide through the set.
+      // The fixed pot row puts the broken hinge 15 units behind the old action
+      // bay, so the stem-holding marks use the authored bay minus that depth.
+      // The tape mark stays at the fixed tape prop; only the tape hand moves.
+      if (storyT >= STORM_RETURN_AT) S.paresh.position.set(0, DECK_TOP, -9.2);
+      else if (storyT >= STORY_CUES.storm.tapeRun) S.paresh.position.set(9, DECK_TOP, 7);
+      else S.paresh.position.set(3.2, DECK_TOP, 7.35 - ACTION_SET_DEPTH);
+      S.anshita.position.set(-20, DECK_TOP, -9);
+    } else if (ch === 8) {
+      // Middle-pot repair: each actor stands back far enough that the repaired
+      // hinge is on that arm's rigid reach sphere (Paresh 7.827, Anshita 7.402),
+      // so the two hand spheres intersect on the joint instead of two hands
+      // meeting short of it. The marks differ because their arm lengths do.
+      // The fixed middle pot is 15 units behind the old bay; actors reblock.
+      S.paresh.position.set(-8.4, 4, 8.45 - ACTION_SET_DEPTH);
+      S.anshita.position.set(8.2, 4, 8.55 - ACTION_SET_DEPTH);
     }
     // Scene 10 pins the authored backs together along one axis: each actor
     // faces outward, so the pair reads as opposing back-to-back torsos while
     // the authored head bones turn far enough for both faces to stay readable.
-    const faceP = act === 'measure' ? Math.PI / 2 : act === 'sow' ? Math.PI + 0.80 : close ? Math.PI + 0.3 : Math.PI + (joyful ? 0.4 : 0.15);
-    const faceA = act === 'measure' ? -Math.PI / 2 : act === 'sow' ? Math.PI - 0.80 : close ? Math.PI - 0.3 : Math.PI - (joyful ? 0.4 : 0.15);
+    const faceP = act === 'measure' ? Math.PI / 2 : act === 'sow' ? Math.PI - 0.1 : close ? Math.PI + 0.3 : Math.PI + (joyful ? 0.4 : 0.15);
+    const faceA = act === 'measure' ? -Math.PI / 2 : act === 'sow' ? Math.PI + 0.1 : close ? Math.PI - 0.3 : Math.PI - (joyful ? 0.4 : 0.15);
     S.paresh.rotation.y = lerp(Math.PI + 0.25, faceP, et);
     S.anshita.rotation.y = lerp(Math.PI - 0.25, faceA, et);
 
+    // Scene 11: four real side-steps each, planted in world space, ending in the
+    // shared posing mark. The gait sets root X/Y/Z from story time.
+    if (joyful) {
+      S.performance.joy.paresh = P.gait(S.joyPlans.paresh, storyT);
+      S.performance.joy.anshita = A.gait(S.joyPlans.anshita, storyT);
+    }
+
     const R = S.rig;
     const E = 1;
+
+    // Grounded kneel/settle/rise and the joy gait own the legs and root. The
+    // measure crouch retains its own authored head-height solve.
+    let pKneel = 0, aKneel = 0, pSettle = 0, aSettle = 0;
+    if (act === 'sow') {
+      // The pair rises after their last line ("Let them come and water it.")
+      // while the chapter still holds on the finished corner.
+      const rise = smooth((storyT - STORY_CUES.sowing.rise) / 1.5);
+      pKneel = aKneel = 1 - rise;
+      pSettle = aSettle = (1 - rise) * smooth((storyT - 21.0) / 1.5);
+    } else if (act === 'storm') {
+      // Return cut at 24.5 s; he lowers onto the deck and settles beside her.
+      const inSpan = Math.max(0.01, STORM_KNEEL.inEnd - STORM_KNEEL.inStart);
+      pKneel = smooth((storyT - STORM_KNEEL.inStart) / inSpan);
+      pSettle = pKneel * smooth((storyT - STORM_KNEEL.inEnd)
+        / Math.max(0.01, STORM_KNEEL.settleEnd - STORM_KNEEL.inEnd));
+    }
+    if (act === 'measure') {
+      setGroundedKneel(R.pBody, R.base.pBody, [
+        { hip:R.pHipL, knee:R.pKneeL, foot:R.pFootL, hipBase:R.base.pHipL, kneeBase:R.base.pKneeL, footBase:R.base.pFootL },
+        { hip:R.pHipR, knee:R.pKneeR, foot:R.pFootR, hipBase:R.base.pHipR, kneeBase:R.base.pKneeR, footBase:R.base.pFootR },
+      ], MEASURE_CROUCH);
+      setGroundedKneel(R.aBody, R.base.aBody, [
+        { hip:R.aHipL, knee:R.aKneeL, foot:R.aFootL, hipBase:R.base.aHipL, kneeBase:R.base.aKneeL, footBase:R.base.aFootL },
+        { hip:R.aHipR, knee:R.aKneeR, foot:R.aFootR, hipBase:R.base.aHipR, kneeBase:R.base.aKneeR, footBase:R.base.aFootR },
+      ], 0);
+      S.performance.kneel.paresh = { amount: MEASURE_CROUCH, settle: 0, stance: 'measure' };
+      S.performance.kneel.anshita = { amount: 0, settle: 0, stance: 'measure' };
+    } else if (act === 'sow' || act === 'storm') {
+      S.performance.kneel.paresh = P.kneel(pKneel, pSettle);
+      S.performance.kneel.anshita = A.kneel(aKneel, aSettle);
+    } else {
+      S.performance.kneel.paresh = { amount: 0, settle: 0, stance: joyful ? 'gait' : 'stand' };
+      S.performance.kneel.anshita = { amount: 0, settle: 0, stance: joyful ? 'gait' : 'stand' };
+    }
+
     // blend from neutral into the action pose as the beat opens
     const b = (from, to) => lerp(from, to, E);
-    const lean = act === 'sow' ? -0.12 : act === 'repair' ? -0.1 : act === 'tend' ? -0.15 : 0;
+    const lean = act === 'sow' ? -0.04 : act === 'repair' ? -0.08 : act === 'tend' ? -0.15 : 0;
     setBaseRotation(R.pBody, R.base.pBody, lean * E);
     setBaseRotation(R.aBody, R.base.aBody, lean * E);
-    const returnKneel = act === 'storm' ? smooth((storyT - 26.5) / 1.5) :
-      act === 'aftermath' ? smooth((storyT - 25) / 2) : 0;
-    const pKneel = act === 'sow' ? E : act === 'measure' ? MEASURE_CROUCH : returnKneel;
-    const aKneel = act === 'sow' ? E : 0;
-    // The authored groups are parent-local: knee.position.y is a negative
-    // offset below its leg group, and the foot pivots are at model-ground y=0.
-    // Move hips/torso to the real knee height and fold shins back while solving
-    // the foot pivot's local offset so the shoes remain on the deck.
-    setGroundedKneel(R.pBody, R.base.pBody, [
-      { hip:R.pHipL, knee:R.pKneeL, foot:R.pFootL, hipBase:R.base.pHipL, kneeBase:R.base.pKneeL, footBase:R.base.pFootL },
-      { hip:R.pHipR, knee:R.pKneeR, foot:R.pFootR, hipBase:R.base.pHipR, kneeBase:R.base.pKneeR, footBase:R.base.pFootR },
-    ], pKneel);
-    setGroundedKneel(R.aBody, R.base.aBody, [
-      { hip:R.aHipL, knee:R.aKneeL, foot:R.aFootL, hipBase:R.base.aHipL, kneeBase:R.base.aKneeL, footBase:R.base.aFootL },
-      { hip:R.aHipR, knee:R.aKneeR, foot:R.aFootR, hipBase:R.base.aHipR, kneeBase:R.base.aKneeR, footBase:R.base.aFootR },
-    ], aKneel);
     // The grounded-pose solver resets rotations; layer lean/breath afterward.
     const breathP = reduced ? 0 : Math.sin(storyT * 1.35) * 0.006;
     const breathA = reduced ? 0 : Math.sin(storyT * 1.12 + 1.1) * 0.005;
@@ -1292,79 +993,12 @@ function applyState(ch, t) {
     setBaseRotation(R.aArmR, R.base.aArmR, b(NEUTRAL.aRx, pose.aRx), 0, b(NEUTRAL.aRz, pose.aRz));
     setBaseRotation(R.pHead, R.base.pHead, b(0, pose.hx), b(0, pose.hy));
     setBaseRotation(R.aHead, R.base.aHead, b(0, pose.hx), b(0, -pose.hy));
-    // Aim the original shoulder bones, not the root meshes. The rigid authored
-    // hands keep their arm length; targets are the soil/joint being cared for.
-    const reach = (arm, target, blend = E) => {
-      if (!arm || !target || blend <= 0) return;
-      arm.parent.updateWorldMatrix(true, false);
-      const worldTarget = target.isVector3 ? target.clone() : new THREE.Vector3(...target);
-      const direction = arm.parent.worldToLocal(worldTarget).sub(arm.position).normalize();
-      const aim = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, -1, 0), direction);
-      arm.quaternion.slerp(aim, clamp(blend, 0, 1));
-    };
-    if (act === 'sow') {
-      // Both remain grounded as they move along the fixed pot row. The packet
-      // and seed hands meet over the active soil; after the third tuck, his
-      // free hand settles over hers for the closing beat.
-      _sowSoilTarget.set(sow.focusX, sow.soilY + 0.15, SOW_SOIL_Z);
-      const restOnKnee = (root, arm) => {
-        if (!arm) return;
-        root.updateWorldMatrix(true, false);
-        arm.getWorldPosition(_restHand);
-        _restHand.y = 6.2;
-        reach(arm, _restHand);
-      };
-      reach(R.pArmL, _sowSoilTarget.clone().add(new THREE.Vector3(-0.4, 1.15, 0)));
-      reach(R.aArmR, _sowSoilTarget.clone().add(new THREE.Vector3(0.4, 0.9, 0)));
-      restOnKnee(S.paresh, R.pArmR);
-      if (sow.share > 0) {
-        reach(R.pArmR, _sowSoilTarget.clone().add(new THREE.Vector3(0.15, 0.45, 0)), sow.share);
-      }
-      restOnKnee(S.anshita, R.aArmL);
-    } else if (act === 'repair') {
-      const joint = act === 'repair';
-      reach(R.pArmL, [-13, joint ? 20 : 13, joint ? 14 : -1]);
-      reach(R.pArmR, [-19, 19, joint ? 14 : 6]); // packet/tape in the visible near hand
-      reach(R.aArmR, [13, joint ? 22 : 15, joint ? 14 : -1]);
-      reach(R.aArmL, joint ? [16, 19, 14] : [18, 17, 4]);
-    } else if (act === 'joy') {
-      // Inside hands greet the flowers and each other; outside arms stay soft.
-      const target = [0, lerp(30.5, 19, joyApproach), lerp(-1, 1, joyApproach)];
-      reach(R.pArmL, target);
-      reach(R.aArmR, target);
-      setBaseRotation(R.pArmR, R.base.pArmR, 0, 0, -0.15);
-      setBaseRotation(R.aArmL, R.base.aArmL, 0, 0, 0.15);
-    } else if (act === 'storm') {
-      const nearHinge = S.plants[0]?.hinge.broken;
-      const farHinge = S.plants[2]?.hinge.broken;
-      const stemPoint = (hinge, out) => {
-        if (!hinge) return null;
-        hinge.updateWorldMatrix(true, false);
-        return hinge.getWorldPosition(out);
-      };
-      const near = stemPoint(nearHinge, new THREE.Vector3());
-      const far = stemPoint(farHinge, new THREE.Vector3());
-      if (near) {
-        // Both hands close on the same broken section she is holding, and stay
-        // there through the quiet so the hold reads at story scale.
-        const anshitaL = near.clone().add(new THREE.Vector3(0.55, 0.35, 0.2));
-        const anshitaR = near.clone().add(new THREE.Vector3(-0.55, 0.2, -0.2));
-        reach(R.aArmL, anshitaL, smooth((storyT - 0.35) / 0.85));
-        reach(R.aArmR, anshitaR, smooth((storyT - 0.35) / 0.85));
-        // He kneels back beside her holding hand and takes the same section;
-        // the tape stays in that hand, the ties bundle in the other.
-        const taking = smooth((storyT - 26) / 1.2);
-        reach(R.pArmR, near.clone().add(new THREE.Vector3(0.05, 0.15, 0)), taking);
-        reach(R.pArmL, near.clone().add(new THREE.Vector3(-0.75, -0.35, 0.35)), taking);
-      }
-      if (far) {
-        const leaving = smooth((storyT - 18.5) / 0.8);
-        reach(R.pArmL, far.clone().add(new THREE.Vector3(0, 0.6, 0)), 1 - leaving);
-      }
-    }
     // The shared task remains in their hands; the exchange lives in attention.
     // Authored head/shoulder/torso bones drive the native skinned meshes. Modest
     // partner yaw preserves both faces rather than turning them into profiles.
+    // Body yaw is applied before the contact solve: the arm is a child of the
+    // torso, so solving first and turning the torso afterwards would publish a
+    // hand position the renderer never reaches.
     const d = dialogueAt(ch, storyT);
     const age = d.start === null ? 0 : storyT - d.start;
     const emphasis = d.speaker ? (reduced ? 1 : smooth(age / 0.45) * smooth((d.end - storyT) / 0.5)) : 0;
@@ -1375,11 +1009,13 @@ function applyState(ch, t) {
       ['Anshita', -1, R.aBody, R.aHead, R.aArmL, R.base.aBody, R.base.aHead],
     ]) {
       const speaking = d.speaker === name;
+      const acting = attentionPose(name, c, storyT, d, reduced);
       const listening = d.speaker && !speaking;
       const delay = name === 'Anshita' ? 0.22 : 0;
       const reactionAge = Math.max(0, age - delay);
       const nod = reduced ? 0 : Math.sin(reactionAge * (speaking ? 2.1 : 1.3)) * Math.exp(-reactionAge * 0.8);
       if (body) {
+        body.rotation.x += acting.lean;
         body.rotation.y = bodyBase.rotation[1] + sign * (close ? 0.02 : 0.055) * E;
         body.rotation.z = bodyBase.rotation[2] + sign * (speaking ? 0.022 : 0.008) * emphasis;
       }
@@ -1388,14 +1024,140 @@ function applyState(ch, t) {
         // bone turns over the shoulder toward the camera for a readable face.
         head.rotation.y = headBase.rotation[1] + sign * (attentive + (speaking ? 0.06 : listening ? 0.12 : 0.03)) * E;
         head.rotation.x += (speaking ? 0.025 : 0.05) * nod * emphasis;
+        head.rotation.x += acting.pitch;
+        head.rotation.y += acting.yaw;
         head.rotation.z = headBase.rotation[2] + sign * (sober ? 0.025 : 0.05) * emphasis * (listening ? 1 : 0.35);
       }
       // Don't interrupt sowing, taping or the watering-can attachment. For the
       // ordinary conversations, a small outside-hand gesture distinguishes turns.
       if (arm && !close && act !== 'storm' && speaking) {
-        arm.rotation.x -= (sober ? 0.16 : 0.35) * emphasis;
+        arm.rotation.x -= (sober ? 0.16 : 0.35) * emphasis * acting.gesture;
         arm.rotation.z += sign * (sober ? -0.07 : -0.18) * emphasis;
       }
+    }
+
+    // Hand targets are solved against the real hand-pivot reach. Props are then
+    // placed from the hand's world matrix, so grip orientation follows the arm.
+    if (act === 'sow') {
+      // Both remain grounded as they move along the fixed pot row. The packet
+      // and seed hands meet over the active soil; after the third tuck, his
+      // free hand settles over hers for the closing beat.
+      _sowSoilTarget.set(sow.focusX, sow.soilY + 0.15, SOW_SOIL_Z);
+      const work = pKneel;
+      const pSoil = _sowP.copy(_sowSoilTarget); pSoil.x -= 0.35; pSoil.y += 0.05;
+      const aSoil = _sowA.copy(_sowSoilTarget); aSoil.x += 0.35; aSoil.y += 0.05;
+      S.performance.contacts.seed = {
+        target: _sowSoilTarget.toArray(),
+        paresh: P.aim('L', pSoil, work, 1.4),
+        anshita: A.aim('R', aSoil, work, 1.4),
+      };
+      if (sow.share > 0) {
+        const sharedGoal = _sowShared.copy(_sowSoilTarget);
+        sharedGoal.x += 0.15; sharedGoal.y += 0.5; sharedGoal.z += 0.25;
+        S.performance.contacts.seedShare = {
+          goal: sharedGoal.toArray(),
+          paresh: P.aim('R', sharedGoal, sow.share * work),
+        };
+      }
+    } else if (act === 'repair') {
+      // Both work the same repaired hinge on the middle pot; the shared point
+      // is on both hand-reach spheres instead of two impossible reaches.
+      const hinge = S.plants[1]?.hinge.repair || S.plants[1]?.hinge.broken;
+      const goal = _contactGoal.set(0, 20.6, 14);
+      if (hinge) {
+        hinge.updateWorldMatrix(true, false);
+        hinge.getWorldPosition(goal);
+        goal.y += 0.2;
+      }
+      const shared = sharedHandPoint(P, 'L', A, 'R', goal);
+      const pOther = _repairP.copy(shared);
+      pOther.x += 0.55; pOther.y += 0.5; pOther.z += 0.25;
+      const aOther = _repairA.copy(shared);
+      aOther.x -= 0.55; aOther.y += 0.35; aOther.z += 0.25;
+      S.performance.contacts.joint = {
+        point: shared.toArray(),
+        target: goal.toArray(),
+        paresh: P.aim('L', shared, E),
+        anshita: A.aim('R', shared, E),
+        pareshTape: P.aim('R', pOther, E),
+        anshitaHold: A.aim('L', aOther, E),
+      };
+    } else if (act === 'joy') {
+      // Inside hands greet the flowers and each other; outside arms stay soft.
+      // The joined hold finishes in front of the pot foliage (toward camera) so
+      // the stems and leaves cannot cover it from the shared-joy angle.
+      const goal = _contactGoal.set(0, lerp(30.5, 19, joyApproach),
+        lerp(-1, 12, joyApproach));
+      const shared = sharedHandPoint(P, 'L', A, 'R', goal);
+      S.performance.contacts.hands = {
+        point: shared.toArray(),
+        goal: goal.toArray(),
+        paresh: P.aim('L', shared, E),
+        anshita: A.aim('R', shared, E),
+      };
+      setBaseRotation(R.pArmR, R.base.pArmR, 0, 0, -0.15);
+      setBaseRotation(R.aArmL, R.base.aArmL, 0, 0, 0.15);
+    } else if (act === 'storm') {
+      const nearHinge = S.plants[0]?.hinge.broken;
+      if (nearHinge) {
+        nearHinge.updateWorldMatrix(true, false);
+        const near = nearHinge.getWorldPosition(_hingeWorld);
+        // The hold is on the actual broken hinge, not a helper point above it.
+        // Small hand offsets keep the two hands from occupying one coordinate.
+        const goal = _contactGoal.copy(near);
+        const holding = smooth((storyT - 0.35) / 0.85);
+        // She holds the same broken section through his tape run. "It's
+        // slipping" loosens his grip; "Don't let go" re-closes it; "I need the
+        // tape" releases him on the cut.
+        const slip = smooth((storyT - 7.0) / 0.9) * (1 - smooth((storyT - 10.2) / 1.0));
+        const leaving = smooth((storyT - STORY_CUES.storm.leaving) / 0.6);
+        // "It's slipping." Keep the arm reaching for the stem but visibly off
+        // the grip instead of dropping it to his side; "Don't let go." closes
+        // the hand again, and the tape cut releases it completely.
+        const pareshHold = holding * (1 - leaving) * (1 - 0.28 * slip);
+        const aL = _stormL.copy(goal);
+        aL.x += 0.06; aL.y += 0.14; aL.z += 0.06;
+        const aR = _stormR.copy(goal);
+        aR.x -= 0.06; aR.y -= 0.14; aR.z += 0.06;
+        S.performance.contacts.stem = {
+          hinge: near.toArray(),
+          target: goal.toArray(),
+          handTargets: { anshitaL: aL.toArray(), pareshR: aR.toArray() },
+          anshitaL: A.aim('L', aL, holding),
+          pareshR: P.aim('R', aR, pareshHold),
+        };
+        if (storyT >= STORY_CUES.storm.tapeRun && storyT < STORM_RETURN_AT) {
+          // Carry the tape at chest height, clear of the foreground flowers.
+          // Preserve the stem target in the diagnostics: this is a release.
+          P.aim('R', _headWorkTarget.set(8, 23, 15), 1);
+        }
+        const returnHold = smooth((storyT - STORY_CUES.storm.returnHold) / 0.9);
+        if (returnHold > 0) {
+          // The shared return point is solved against the actual hinge; the
+          // test and performance() both compare it with the loaded hinge world.
+          const shared = sharedHandPoint(P, 'R', A, 'L', goal);
+          S.performance.contacts.stem.return = {
+            point: shared.toArray(),
+            target: goal.toArray(),
+            paresh: P.aim('R', shared, returnHold),
+            anshita: A.aim('L', shared, returnHold),
+          };
+        }
+      }
+    } else if (act === 'aftermath') {
+      // "Then hold it with me." / "I'm here." — the gesture begins as she asks
+      // and stays through his reply. No dialogue or story beat is added.
+      const hold = smooth((storyT - STORY_CUES['morning-after'].holdStart) / 0.6)
+        * (1 - smooth((storyT - STORY_CUES['morning-after'].holdEnd) / 1.0));
+      const goal = _contactGoal.set(0, 23, 12);
+      const shared = sharedHandPoint(P, 'L', A, 'R', goal);
+      S.performance.contacts.handHold = {
+        point: shared.toArray(),
+        goal: goal.toArray(),
+        active: hold > 0.6,
+        paresh: P.aim('L', shared, hold),
+        anshita: A.aim('R', shared, hold),
+      };
     }
     if (act === 'measure') {
       // Torsos remain opposing; each original head tracks the camera so both
@@ -1412,25 +1174,38 @@ function applyState(ch, t) {
         head.rotation.z = 0;
       }
     }
-    const attach = (root, group, character, handName, scale) => {
-      const hand = character.getObjectByName(handName);
+    const attach = (root, group, hand, scale) => {
       if (!hand || !group) return;
-      character.updateMatrixWorld(true);
-      const point = hand.localToWorld(new THREE.Vector3(0, 1.2, 0));
+      hand.updateWorldMatrix(true, false);
+      const point = hand.localToWorld(_attachHandPoint.set(0, 1.2, 0));
       root.updateMatrixWorld(true);
       group.position.copy(root.worldToLocal(point));
       group.scale.setScalar(scale);
       group.rotation.set(0, 0, 0);
     };
     if (act === 'sow' || (act === 'invite' && storyT >= 16)) {
-      attach(S.careProps, S.variants.seed_packet[0].group, S.paresh,
-        act === 'sow' ? 'hand_L_smooth__pivot' : 'hand_R_smooth__pivot', 0.75);
+      const group = S.variants.seed_packet?.[0]?.group;
+      if (group) {
+        if (act === 'sow') {
+          P.attach(S.careProps, group, 'L',
+            { offset: [0, 1.0, 0.3], rotation: [0.1, -0.15, 0.2], scale: 0.24 });
+        } else {
+          attachProp(S.careProps, group, S.handPivots.pareshSmoothR,
+            { offset: [0, 1.0, 0.3], rotation: [0.1, 0.1, 0.2], scale: 0.75 });
+        }
+      }
     }
-    if (act === 'repair' || (act === 'storm' && storyT >= 26) || (act === 'aftermath' && storyT >= 29)) {
-      attach(S.careProps, S.variants.tape[0].group, S.paresh, 'hand_R_smooth__pivot', 0.8);
+    if (act === 'repair' || (act === 'storm' && storyT >= STORY_CUES.storm.tapeRun)
+        || (act === 'aftermath' && storyT >= 29)) {
+      const group = S.variants.tape?.[0]?.group;
+      if (group) {
+        P.attach(S.careProps, group, 'R',
+          { offset: [0, 0.8, 0.4], rotation: [0.2, 0, 0.3], scale: 0.8 });
+      }
     }
-    if (act === 'storm' && storyT >= 26 && S.variants.support?.[0]) {
-      attach(S.careProps, S.variants.support[0].group, S.paresh, 'hand_L_smooth__pivot', 0.5);
+    if (act === 'storm' && storyT >= STORY_CUES.storm.support && S.variants.support?.[0]) {
+      P.attach(S.careProps, S.variants.support[0].group, 'L',
+        { offset: [0, 1.4, 0.2], rotation: [0, 0, 0.2], scale: 0.5 });
     }
     updateLaptop(ch, storyT);
     if (S.coffee) setGroupVisible(S.anshita, S.coffee, act === 'invite');
@@ -1438,29 +1213,63 @@ function applyState(ch, t) {
       const canOwner = act === 'time_lapse' ? S.paresh : S.anshita;
       setGroupVisible(S.props, S.can, ['invite','time_lapse','tend'].includes(act));
       if (['invite','time_lapse','tend'].includes(act)) {
-        const hand = canOwner === S.paresh ? 'hand_R_smooth__pivot' : 'hand_R_mesh__pivot';
-        attach(S.props, S.can, canOwner, hand, 0.6);
+        const hand = canOwner === S.paresh ? S.handPivots.pareshSmoothR : S.handPivots.anshitaMeshR;
+        attach(S.props, S.can, hand, 0.6);
       }
       S.can.rotation.z = -0.45 + (reduced ? 0 : Math.sin(storyT * 1.2) * 0.035);
     }
     if (act === 'sow') {
-      aimAtLocalNegativeZ(R.pHead, _sowSoilTarget);
-      aimAtLocalNegativeZ(R.aHead, _sowSoilTarget);
+      // Look at the working soil from above the hands, not straight down into
+      // the pot: this keeps both faces and the seed contact uncovered by hair.
+      const risen = 1 - pKneel;
+      _headWorkTarget.set(sow.focusX, sow.soilY + 6.5 + risen * 8,
+        SOW_SOIL_Z + 6.0 + risen * 2);
+      aimAtLocalNegativeZ(R.pHead, _headWorkTarget);
+      aimAtLocalNegativeZ(R.aHead, _headWorkTarget);
     } else if (act === 'storm') {
       const near = S.plants[0]?.hinge.broken;
-      const far = S.plants[2]?.hinge.broken;
-      if (storyT < 18.5 && far) {
-        far.getWorldPosition(_packetWorldTarget);
-        near?.getWorldPosition(_partnerHandWorldTarget);
-        aimAtLocalNegativeZ(R.pHead, _packetWorldTarget);
-        aimAtLocalNegativeZ(R.aHead, _partnerHandWorldTarget);
-      } else if (storyT >= 25.5 && near) {
-        // Turn faces toward the camera while the hands keep working together;
-        // the stem remains the close-focus point between them.
-        aimAtLocalNegativeZ(R.pHead, camera.position);
-        aimAtLocalNegativeZ(R.aHead, camera.position);
+      if (near) {
+        near.updateWorldMatrix(true, false);
+        near.getWorldPosition(_partnerHandWorldTarget);
+        if (storyT >= STORY_CUES.storm.lookBack) {
+          // Return: faces to camera while the hands keep the stem between them.
+          aimAtLocalNegativeZ(R.pHead, camera.position);
+          aimAtLocalNegativeZ(R.aHead, camera.position);
+        } else if (storyT >= STORY_CUES.storm.tapeRun) {
+          // Tape run: he looks at the tape in his hands; she keeps the stem.
+          _headWorkTarget.set(9, 19, 9.5);
+          aimAtLocalNegativeZ(R.pHead, _headWorkTarget);
+          _partnerHandWorldTarget.y += 1.6;
+          _partnerHandWorldTarget.z += 2.4;
+          aimAtLocalNegativeZ(R.aHead, _partnerHandWorldTarget);
+        } else {
+          _partnerHandWorldTarget.y += 1.6;
+          _partnerHandWorldTarget.z += 2.4;
+          aimAtLocalNegativeZ(R.pHead, _partnerHandWorldTarget);
+          aimAtLocalNegativeZ(R.aHead, _partnerHandWorldTarget);
+        }
+      }
+    } else if (act === 'repair') {
+      // The fixed middle pot sits 15 units behind the old bay; look at the
+      // actual joint rather than the old staged position.
+      _headWorkTarget.set(0, 25, 18 - ACTION_SET_DEPTH);
+      aimAtLocalNegativeZ(R.pHead, _headWorkTarget);
+      aimAtLocalNegativeZ(R.aHead, _headWorkTarget);
+    } else if (act === 'aftermath' && storyT >= STORY_CUES['morning-after'].headLook) {
+      _headWorkTarget.set(0, 22, 6);
+      aimAtLocalNegativeZ(R.pHead, _headWorkTarget);
+      aimAtLocalNegativeZ(R.aHead, _headWorkTarget);
+    }
+    // Task eyelines stay within the neck's range instead of folding the face
+    // into the hands. The hands carry the action; a glance need not be a bow.
+    if (['sow', 'storm', 'repair', 'aftermath'].includes(act)) {
+      for (const head of [R.pHead, R.aHead]) {
+        head.rotation.x = clamp(head.rotation.x, -0.25, 0.35);
+        head.rotation.y = clamp(head.rotation.y, -0.7, 0.7);
+        head.rotation.z = 0;
       }
     }
+    measureContactTree(S.performance.contacts, S.performers);
   }
 
   // clouds drift deterministically with time
@@ -1506,7 +1315,7 @@ function applyState(ch, t) {
   sound.update(c, storyT, S.playing && !S.frozen && !document.hidden);
   const progress = clamp(storyT / c.dur, 0, 1) * 100;
   barEl.style.width = progress.toFixed(2) + '%';
-  const progressEl = document.getElementById('progress'), value = progress.toFixed(0);
+  const value = progress.toFixed(0);
   if (progressEl.getAttribute('aria-valuenow') !== value) progressEl.setAttribute('aria-valuenow', value);
 }
 
@@ -1573,8 +1382,7 @@ function state() {
     actions: { doorAngle: S.doorAngle, laptopMode: S.laptopMode,
       timeSuper: timeSuper.style.visibility === 'visible', roomLight: S.roomLight?.intensity ?? 0 },
     dialogue: dialogueAt(S.chapter, S.t),
-    bubbleLayout: Object.fromEntries(Object.entries(S.bubbleLayout).map(([name, layout]) => [name, { ...layout, anchor: { ...layout.anchor } }])),
-    bubbleUpdateCount: S.bubbleUpdateCount, filmCard: S.filmCard,
+    bubbleLayout: {}, bubbleUpdateCount: 0, filmCard: S.filmCard,
     frame: renderer.info.render.frame, reducedMotion: reduced, assetWarnings: S.assetWarnings,
   };
 }
@@ -1634,9 +1442,9 @@ async function init() {
   });
   const headAnchor = (character, head) => {
     character.updateWorldMatrix(true, true);
-    head.getWorldPosition(_bubblePoint);
-    character.worldToLocal(_bubblePoint);
-    return Object.freeze(_bubblePoint.toArray());
+    head.getWorldPosition(_headAnchorPoint);
+    character.worldToLocal(_headAnchorPoint);
+    return Object.freeze(_headAnchorPoint.toArray());
   };
   S.rig.base = Object.freeze({
     pBody: transformSnapshot(S.rig.pBody), aBody: transformSnapshot(S.rig.aBody),
@@ -1651,6 +1459,35 @@ async function init() {
     aFootL: transformSnapshot(S.rig.aFootL), aFootR: transformSnapshot(S.rig.aFootR),
     pHeadAnchor: headAnchor(S.paresh, S.rig.pHead), aHeadAnchor: headAnchor(S.anshita, S.rig.aHead),
   });
+  // Focused, reusable performance module. It captures the authored rig base
+  // transforms here, before any frame pose, and owns legs/root/contact solving.
+  const performerFor = (character, prefix, name) => createPerformer({
+    character, groundY: DECK_TOP, name,
+    joints: {
+      torso: S.rig[prefix + 'Body'], head: S.rig[prefix + 'Head'],
+      armL: S.rig[prefix + 'ArmL'], armR: S.rig[prefix + 'ArmR'],
+      legL: { hip: S.rig[prefix + 'HipL'], knee: S.rig[prefix + 'KneeL'], foot: S.rig[prefix + 'FootL'] },
+      legR: { hip: S.rig[prefix + 'HipR'], knee: S.rig[prefix + 'KneeR'], foot: S.rig[prefix + 'FootR'] },
+    },
+  });
+  S.performers = {
+    paresh: performerFor(S.paresh, 'p', 'Paresh'),
+    anshita: performerFor(S.anshita, 'a', 'Anshita'),
+  };
+  S.joyPlans = {
+    paresh: S.performers.paresh.planGait({
+      start: { x: JOY_MARKS.paresh.startX, z: JOY_MARKS.paresh.z },
+      end: { x: JOY_MARKS.paresh.endX, z: JOY_MARKS.paresh.z },
+      startTime: JOY_APPROACH.start, endTime: JOY_APPROACH.end,
+      steps: JOY_APPROACH.steps, lift: JOY_APPROACH.lift, yaw: JOY_MARKS.paresh.yaw,
+    }),
+    anshita: S.performers.anshita.planGait({
+      start: { x: JOY_MARKS.anshita.startX, z: JOY_MARKS.anshita.z },
+      end: { x: JOY_MARKS.anshita.endX, z: JOY_MARKS.anshita.z },
+      startTime: JOY_APPROACH.start, endTime: JOY_APPROACH.end,
+      steps: JOY_APPROACH.steps, lift: JOY_APPROACH.lift, yaw: JOY_MARKS.anshita.yaw,
+    }),
+  };
   // Preserve authored personal accessories in the exports, but free their hands
   // for garden actions; no replacement character geometry is constructed here.
   S.laptop = B(S.paresh, 'laptop');
@@ -1659,54 +1496,18 @@ async function init() {
   if (S.laptop) S.laptopHome = { position: S.laptop.position.clone(), rotation: S.laptop.rotation.clone() };
   S.coffee = B(S.anshita, 'items_coffee');
   S.carry = B(S.anshita, 'items_carry');
+  // Attachment pivots keep their authored per-export names; resolve them once.
+  S.handPivots = {
+    pareshSmoothR: B(S.paresh, 'hand_R_smooth__pivot'),
+    anshitaMeshR: B(S.anshita, 'hand_R_mesh__pivot'),
+  };
   setGroupVisible(S.paresh, S.laptop, false);
   setGroupVisible(S.anshita, S.coffee, false);
   setGroupVisible(S.anshita, S.carry, false);
 
   S.rain = makeRain();
 
-  // chapter dots
-  CH.forEach((_, i) => {
-    const d = document.createElement('button');
-    d.className = 'dot'; d.title = CH[i].title;
-    d.setAttribute('role', 'tab');
-    d.setAttribute('aria-label', CH[i].title);
-    d.onclick = () => enterChapter(i);
-    dotsWrap.appendChild(d);
-    dots.push(d);
-  });
-  document.getElementById('prev').onclick = () => enterChapter(S.chapter - 1);
-  document.getElementById('next').onclick = () => enterChapter(S.chapter + 1);
-  document.getElementById('replay').onclick = () => { S.frozen = false; S.playing = true; enterChapter(0); setPlayLabel(); };
-  document.getElementById('continue').onclick = continueStory;
-  const transcript = document.getElementById('transcript');
-  const transcriptLines = document.getElementById('transcript-lines');
-  CH.forEach(c => {
-    const li = document.createElement('li'), heading = document.createElement('h3');
-    heading.textContent = c.title; li.appendChild(heading);
-    for (const line of c.dialogue) {
-      const p = document.createElement('p'), speaker = document.createElement('strong');
-      speaker.textContent = line.speaker + ': ';
-      p.append(speaker, document.createTextNode(line.text)); li.appendChild(p);
-    }
-    transcriptLines.appendChild(li);
-  });
-  document.getElementById('story-notes').onclick = () => {
-    freeze(true); transcript.showModal();
-  };
-  document.getElementById('transcript-close').onclick = () => transcript.close();
-  playBtn.onclick = () => {
-    if (S.frozen) { resume(); return; }
-    S.playing = !S.playing; setPlayLabel();
-    if (S.ready) { applyState(S.chapter, S.t); renderer.render(scene, camera); }
-  };
-  addEventListener('keydown', (e) => {
-    if (transcript.open || e.target.closest('button, a, input, select, textarea')) return;
-    if (e.key === 'ArrowRight') { e.preventDefault(); enterChapter(S.chapter + 1); }
-    else if (e.key === 'ArrowLeft') { e.preventDefault(); enterChapter(S.chapter - 1); }
-    else if (e.key === 'Enter') { e.preventDefault(); continueStory(); }
-    else if (e.key === ' ') { e.preventDefault(); playBtn.click(); }
-  });
+  presentation.mount();
   REDUCED.addEventListener?.('change', (e) => {
     reduced = e.matches;
     if (reduced) S.playing = false;
@@ -1726,7 +1527,7 @@ async function init() {
 }
 
 addEventListener('beforeunload', () => {
-  clearTimeout(chromeTimer);
+  presentation.dispose();
   sound.dispose();
   cancelAnimationFrame(loopId);
   for (const m of S.models) { m.dispose(); m.skeleton.dispose(); }

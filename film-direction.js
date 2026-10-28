@@ -12,21 +12,52 @@ export function directShot(camera, look, chapter, seconds, reduced, sowFocus = 0
     shot = name; start = at; target = aim; offset = eye;
   };
   if (id === 'sowing') {
-    frame('soil-and-hands', 0, [sowFocus, 12, 3], [mobile ? 0 : 8, 26, mobile ? 112 : 65]);
+    // Low three-quarter insert from Paresh's side: the active pot opening, the
+    // packet and both fingertips stay clear of the long-haired actor's head.
+    // The insert is tighter than the old establishing distance so the near-rim
+    // fingers and seed are separable at both viewports.
+    frame('soil-and-hands', 0, [sowFocus, 13.5, 3.6],
+      [0, mobile ? 72 : 42, mobile ? 105 : 44]);
+  } else if (id === 'weather-turns') {
+    frame('windup', 0, [0, 22, 8], [mobile ? 2 : 10, 16, mobile ? 112 : 76]);
+    if (seconds >= 13) frame('first-gust', 13, [0, 22, 6], [mobile ? -4 : 4, 14, mobile ? 104 : 70]);
   } else if (id === 'weather-report') {
     frame('separation', 0, [0, 23, -7], [12, 8, mobile ? 140 : 94]);
     if (seconds >= 10) frame('unanswered-look', 10, [24, 27, 2], [-8, 4, mobile ? 65 : 54]);
     if (seconds >= 16 && seconds < 20) frame('behind-the-screen', 16, [-20, 26, -22], [10, 5, mobile ? 65 : 54]);
   } else if (['storm','morning-after','seven-am'].includes(id)) {
-    frame('care-two-shot', 0, [0, 20, 12], [4, 10, mobile ? 110 : 78]);
-    if (id === 'storm' && seconds >= 18 && seconds < 26) {
-      frame('holding-alone', 18, [-11, 22, 13], [16, 5, mobile ? 60 : 48]);
-    } else if (id === 'storm' && seconds >= 26) {
-      frame('return-to-her', 26, [-5, 20, 12], [mobile ? -12 : -22, 9, mobile ? 92 : 61]);
-    } else if (id === 'morning-after' && seconds >= 11) {
-      frame('the-silence-between', 11, [0, 23, 5], [5, 4, mobile ? 100 : 70]);
+    // The pot/plant set is fixed in every chapter. Storm and repair blocking was
+    // authored around a bay 15 units toward camera; their shots aim at the
+    // reblocked actors instead of the old bay, and the props never move.
+    const careZ = id === 'morning-after' ? 12 : -3;
+    frame('care-two-shot', 0, [0, 20, careZ], [4, 10, mobile ? 110 : 78]);
+    if (id === 'storm') {
+      if (seconds >= 6.8 && seconds < 18) {
+        frame('failed-grip', 6.8, [-6, 20, -2], [mobile ? 0 : -8, mobile ? 48 : 32, mobile ? 83 : 48]);
+      } else if (seconds >= 18 && seconds < 24.5) {
+        // The tape cue is at the fixed tape prop; frame him away from her so the
+        // working hand and the still-held stem are separate screen events.
+        frame('tape-run', 18, [-2, 21, 2], [0, mobile ? 45 : 30, mobile ? 100 : 65]);
+      } else if (seconds >= 24.5) {
+        // Frontal off-axis from the returning side: the kneeling figure and the
+        // standing holder separate, with the stem still between them.
+        frame('return-to-her', 24.5, [-9, 18, -3], [mobile ? 0 : 7, mobile ? 54 : 34, mobile ? 90 : 43]);
+      }
+    } else if (id === 'morning-after') {
+      if (seconds < 3) {
+        // Quiet opening insert: a head-on level view of the open doorway, with
+        // both actors behind the camera plane, so the opening is actually empty.
+        frame('empty-doorway', 0, [-18, 20, -15.6], [0, 0, 17.6]);
+      } else {
+        frame('care-two-shot', 3, [0, 20, 12], [4, 10, mobile ? 110 : 78]);
+      }
+      if (seconds >= 11) frame('the-silence-between', 11, [0, 23, 5], [5, 4, mobile ? 100 : 70]);
+      if (seconds >= 23) frame('the-handoff', 23, [0, 23, 6], [0, mobile ? 30 : 20, mobile ? 98 : 62]);
     } else if (id === 'seven-am' && seconds < 10) {
-      frame('the-wrap', 0, [mobile ? -18 : -13, 20, 14], [mobile ? 0 : 12, 7, mobile ? 90 : 61]);
+      // Shared middle-pot repair: the joint sits near face height for the
+      // camera, so the two hands and the tape read against the sky instead of
+      // under the leaves above the fixed pot.
+      frame('shared-repair', 0, [0, 21, -2], [0, mobile ? 58 : 37, mobile ? 82 : 42]);
     }
   } else if (id === 'measure') {
     // Save the sustained orbit and crane for the title's payoff.
@@ -41,10 +72,17 @@ export function directShot(camera, look, chapter, seconds, reduced, sowFocus = 0
     return 'height-reveal';
   } else if (id === 'bloom') {
     frame('flower-reveal', 0, [0, 35, 0], [12, 8, mobile ? 126 : 98]);
-    if (seconds >= 15.5) frame('shared-joy', 15.5, [0, 27, 5], [5, 7, mobile ? 100 : 77]);
+    if (seconds >= 15.5 && seconds < 17.1) {
+      // Approach insert on the deck: the four alternating steps read before the
+      // cut back up to the flowers and the shared reaction.
+      frame('approach-steps', 15.5, [0, 17, 4], [6, 5, mobile ? 96 : 60]);
+    } else if (seconds >= 17.1) {
+      frame('shared-joy', 17.1, [0, 32, 5], [0, mobile ? 38 : 23, mobile ? 135 : 88]);
+    }
   } else if (id === 'summer') {
     frame('last-light', 0, [0, 27, 1], [14, 13, mobile ? 126 : 105]);
     if (seconds >= 14) frame('one-more-minute', 14, [0, 27, 5], [8, 6, mobile ? 91 : 71]);
+    if (seconds >= 26.5) frame('last-line', 26.5, [0, 25, 5], [6, 7, mobile ? 96 : 70]);
   } else if (id === 'good-things') {
     frame('evening-garden', 0, [0, 18, 8], [15, 21, mobile ? 128 : 95]);
     if (seconds >= 16) frame('shared-scent', 16, [0, 27, 5], [9, 6, mobile ? 91 : 70]);

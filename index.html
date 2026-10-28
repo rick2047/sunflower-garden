@@ -101,27 +101,6 @@
   body.cinema:has(:focus-visible) #ui, body.cinema:has(:focus-visible) #dots,
   body.cinema:has(:focus-visible) #story-notes { opacity: 1; }
   #sound { font-size: 12px; }
-  #bubble-layer { display: none; }
-  .speech-bubble { position: fixed; width: max-content; max-width: min(330px, 38vw);
-    padding: 11px 16px 13px; border: 1px solid rgba(70,53,38,.14); border-radius: 20px;
-    background: rgba(255,251,241,.97); color: #30271f; box-shadow: 0 7px 24px rgba(12,15,24,.3);
-    transform: translate(-50%, -100%); opacity: 0; visibility: hidden; }
-  .speech-bubble.visible { opacity: 1; visibility: visible; }
-  .speech-bubble::after { content: ''; position: absolute; bottom: -9px; left: 50%; width: 16px; height: 16px;
-    background: inherit; border-right: 1px solid rgba(70,53,38,.14); border-bottom: 1px solid rgba(70,53,38,.14);
-    transform: translateX(-50%) rotate(45deg); }
-  .bubble-name { display: block; margin-bottom: 4px; font: 700 10px/1.2 system-ui, sans-serif;
-    letter-spacing: 1.3px; text-transform: uppercase; color: #a66820; }
-  .speech-bubble[data-speaker="Anshita"] .bubble-name { color: #347899; }
-  .bubble-text { margin: 0; font: 16px/1.38 Georgia, 'Times New Roman', serif; }
-  .reaction-bubble { position: fixed; display: grid; place-items: center; width: 42px; height: 42px;
-    border-radius: 50%; background: rgba(255,251,241,.97); border: 1px solid rgba(70,53,38,.16);
-    box-shadow: 0 5px 18px rgba(12,15,24,.28); font: 23px/1 system-ui, sans-serif;
-    transform: translate(-50%, -100%); opacity: 0; visibility: hidden; }
-  .reaction-bubble.visible { opacity: 1; visibility: visible; }
-  .reaction-bubble::after { content: ''; position: absolute; bottom: -5px; left: 50%; width: 9px; height: 9px;
-    background: inherit; border-right: 1px solid rgba(70,53,38,.16); border-bottom: 1px solid rgba(70,53,38,.16);
-    transform: translateX(-50%) rotate(45deg); }
   #story-notes { position: fixed; top: 44px; right: 18px; font: 11px system-ui, sans-serif;
     padding: 5px 9px; min-height: 28px; }
   .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -142,10 +121,6 @@
     #sound { padding: 8px; }
     #caption { top: max(76px, calc(env(safe-area-inset-top) + 60px)); padding: 0 62px; }
     #caption h1 { font-size: 14px; }
-    .speech-bubble { max-width: min(250px, 64vw); padding: 9px 12px 11px; border-radius: 17px; }
-    .bubble-name { font-size: 9px; margin-bottom: 3px; }
-    .bubble-text { font-size: 15px; line-height: 1.34; }
-    .reaction-bubble { width: 36px; height: 36px; font-size: 20px; }
     #ui { gap: 7px; }
     .navbtn { padding: 9px 12px; font-size: 14px; }
     #prev, #next { padding: 8px 12px; }
@@ -175,12 +150,6 @@
 <div id="subtitles" aria-hidden="true"><span id="subtitle-speaker"></span><p id="subtitle-text"></p></div>
 <button class="navbtn" id="story-notes" aria-haspopup="dialog">Read the story</button>
 <section id="caption" aria-label="Current scene"><h1></h1></section>
-<div id="bubble-layer" aria-hidden="true">
-  <div class="speech-bubble" id="bubble-paresh" data-speaker="Paresh"><span class="bubble-name">Paresh</span><p class="bubble-text"></p></div>
-  <div class="speech-bubble" id="bubble-anshita" data-speaker="Anshita"><span class="bubble-name">Anshita</span><p class="bubble-text"></p></div>
-  <div class="reaction-bubble" id="reaction-paresh"></div>
-  <div class="reaction-bubble" id="reaction-anshita"></div>
-</div>
 <div id="announcement" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 <dialog id="transcript" aria-labelledby="transcript-title">
   <button class="navbtn" id="transcript-close" aria-label="Close story transcript">Close</button>

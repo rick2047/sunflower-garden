@@ -1,4 +1,6 @@
 // Optional, locally synthesized atmosphere. No network assets or autoplay audio.
+import { foleyCuesFor, STORY_CUES } from './story-cues.js';
+
 export class Soundscape {
   constructor() { this.enabled = false; this.context = null; this.voices = new Set(); this.previous = null; }
 
@@ -37,7 +39,8 @@ export class Soundscape {
     const rain = chapter.id === 'storm';
     const wind = chapter.id === 'weather-turns';
     const gust = 0.82 + 0.18 * Math.sin(seconds * 0.71);
-    const ending = chapter.id === 'summer' ? Math.min(1, Math.max(0, (29.6 - seconds) / 3)) : 1;
+    const ending = chapter.id === 'summer'
+      ? Math.min(1, Math.max(0, (STORY_CUES.summer.soundFadeStart - seconds) / 3)) : 1;
     const level = this.enabled && playing ? (rain ? 0.13 : wind ? 0.075 : 0.018) * gust * ending : 0;
     this.master.gain.setTargetAtTime(level, ctx.currentTime, 0.12);
     this.filter.frequency.setTargetAtTime(rain ? 5400 : wind ? 850 : 420, ctx.currentTime, 0.2);
@@ -46,25 +49,32 @@ export class Soundscape {
     this.previous = playing ? { id: chapter.id, seconds } : null;
     if (this.enabled && playing && previous?.id === chapter.id &&
         seconds > previous.seconds && seconds - previous.seconds < 0.25) {
-      const cues = chapter.id === 'seven-am' ? [[5, 'tape'], [6.7, 'tape']] :
-        chapter.id === 'sowing' ? [[4, 'soil'], [9, 'soil'], [14, 'soil']] :
-        chapter.id === 'dawn' ? [[2.2, 'ceramic']] : [];
-      for (const [at, kind] of cues) if (previous.seconds < at && seconds >= at) this.foley(kind);
+      // Cue names/times live in story-cues.js; the joy gait's four foot plants
+      // are ordinary foley crossings here, so seeks stay silent like the rest.
+      for (const cue of foleyCuesFor(chapter.id)) {
+        if (previous.seconds < cue.at && seconds >= cue.at) this.foley(cue.kind, cue);
+      }
     }
   }
 
-  foley(kind) {
+  foley(kind, cue = {}) {
     const ctx = this.context, gain = ctx.createGain(), filter = ctx.createBiquadFilter();
     const ceramic = kind === 'ceramic';
+    const footstep = kind === 'footstep';
     const source = ceramic ? ctx.createOscillator() : ctx.createBufferSource();
     if (ceramic) { source.type = 'sine'; source.frequency.value = 920; }
     else source.buffer = this.buffer;
-    const length = kind === 'tape' ? 0.32 : 0.18;
-    filter.type = 'bandpass'; filter.frequency.value = kind === 'tape' ? 2800 : 700;
+    const length = kind === 'tape' ? 0.32 : footstep ? 0.16 : 0.18;
+    filter.type = footstep ? 'lowpass' : 'bandpass';
+    filter.frequency.value = footstep ? (cue.side === 'L' ? 190 : 230)
+      : kind === 'tape' ? 2800 : 700;
     filter.Q.value = ceramic ? 1 : 0.6;
     source.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+    // Footsteps are a short, dark noise thump on the deck; alternating sides
+    // vary the filter slightly without panning the mono ambience.
     gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(ceramic ? 0.035 : 0.065, ctx.currentTime + 0.012);
+    gain.gain.linearRampToValueAtTime(footstep ? 0.045 : ceramic ? 0.035 : 0.065,
+      ctx.currentTime + 0.012);
     gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + length);
     source.start(); source.stop(ctx.currentTime + length);
     const voice = { source, gain, filter }; this.voices.add(voice);
