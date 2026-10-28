@@ -6,7 +6,7 @@ import { Soundscape } from './soundscape.js';
 import { CHAPTERS as CH, STORY_DURATION as storyDuration, capturesFor, dialogueAt } from './screenplay.js';
 import { JOY_APPROACH, STORY_CUES } from './story-cues.js';
 import { createPresentation } from './presentation.js';
-import { layoutSpeechBubble } from './speech-bubble-layout.js';
+import { layoutSpeechBubble, speechBubbleTailOffset } from './speech-bubble-layout.js';
 
 /* Taller Than Us — a short film about one summer, told through a balcony garden.
    The garden is visual subtext; the relationship lives in their imagined dialogue.
@@ -350,8 +350,7 @@ function layoutDialogueBubble(ch, storyT, dialogue) {
   const placement = S.bubblePlacement;
   const left = clamp(_dialogueAnchor.x + S.bubbleOffset.x, placement.minLeft, placement.maxLeft);
   const top = clamp(_dialogueAnchor.y + S.bubbleOffset.y, placement.minTop, placement.maxTop);
-  const tailOffset = clamp(_dialogueAnchor.x - (left + placement.width / 2),
-    -placement.width / 2 + 18, placement.width / 2 - 18);
+  const tailOffset = speechBubbleTailOffset(_dialogueAnchor.x, left, placement.width);
   _bubbleLayout.left = left;
   _bubbleLayout.top = top;
   _bubbleLayout.width = placement.width;

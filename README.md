@@ -1,12 +1,13 @@
 # Sunflower Garden
 
-**[Watch Taller Than Us](https://rick2047.github.io/sunflower-garden/)**
+**[Watch the latest published build](https://rick2047.github.io/sunflower-garden/)**
 
 A 6-minute 39-second animated story about Paresh, Anshita, and a balcony garden.
-Use **Play** to watch, **Continue** to advance through dialogue, or the chapter
-dots to jump between scenes. Dialogue appears in character speech bubbles; the
-transcript is available as a separate reading aid. Sound is optional; enable it
-with **Sound off**.
+This source build presents spoken lines in character speech bubbles; the public
+link tracks the latest deployment and can lag unreleased changes. Use **Play** to
+watch, **Continue** to advance through dialogue, or the chapter dots to jump
+between scenes. The transcript is a separate reading aid. Sound is optional;
+enable it with **Sound off**.
 
 A Three.js garden story served as static HTML/JavaScript. Geometry, materials,
 rigs and animation can be created or refined directly in code. Existing

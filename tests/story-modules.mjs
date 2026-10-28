@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { CHAPTERS, STORY_DURATION, capturesFor, dialogueAt } from '../screenplay.js';
 import { FOLEY_CUES, JOY_APPROACH, STORY_CUES, foleyCuesFor, lineCue } from '../story-cues.js';
-import { layoutSpeechBubble } from '../speech-bubble-layout.js';
+import { layoutSpeechBubble, speechBubbleTailOffset } from '../speech-bubble-layout.js';
 import { createPresentation } from '../presentation.js';
 import { Soundscape } from '../soundscape.js';
 
@@ -48,6 +48,9 @@ const above = bubbleLayout();
 assert.equal(above.placement, 'above');
 assert.deepEqual([above.left, above.top], [85, 178]);
 assert.equal(above.tailOffset, 0);
+assert.equal(speechBubbleTailOffset(195, 85, 220), 0);
+assert.equal(speechBubbleTailOffset(0, 12, 120), -42,
+  'bubble tail remains inside the rounded corners when clamped');
 
 const below = bubbleLayout({ anchor: { x: 195, y: 70 } });
 assert.equal(below.placement, 'below', 'bubble moves below a head near the top safe area');

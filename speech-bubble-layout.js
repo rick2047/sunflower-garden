@@ -1,7 +1,13 @@
 const DEFAULT_SAFE_AREA = Object.freeze({ top: 64, right: 12, bottom: 120, left: 12 });
 const NO_OBSTACLES = Object.freeze([]);
+const TAIL_EDGE_INSET = 18;
 
 const clamp = (value, low, high) => Math.max(low, Math.min(value, high));
+
+export function speechBubbleTailOffset(anchorX, left, width) {
+  const halfWidth = width / 2;
+  return clamp(anchorX - (left + halfWidth), -halfWidth + TAIL_EDGE_INSET, halfWidth - TAIL_EDGE_INSET);
+}
 
 function validatePositive(name, value) {
   if (!Number.isFinite(value) || value <= 0) {
@@ -101,7 +107,7 @@ export function layoutSpeechBubble({
     width: size.width,
     height: size.height,
     placement: bestPlacement,
-    tailOffset: clamp(anchor.x - (bestLeft + size.width / 2), -size.width / 2 + 18, size.width / 2 - 18),
+    tailOffset: speechBubbleTailOffset(anchor.x, bestLeft, size.width),
     minLeft,
     maxLeft,
     minTop,

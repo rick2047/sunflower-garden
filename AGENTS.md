@@ -15,8 +15,9 @@ Three.js is the default workspace for modeling, rigging, animation and rendering
 For every technical change, use these skills in order:
 
 1. **Design:** use `codebase-design` to choose the module, interface and seam.
-2. **Implement:** use `implement` to make the change, agree on test seams, and
-   follow TDD where practical.
+2. **Implement:** invoke the required `implement` skill to make the change,
+   agree on test seams, and follow TDD where practical. If the runtime cannot
+   load this skill, stop and report the blocker rather than bypassing the cycle.
 3. **Review:** use `code-review` for separate standards and spec reviews; resolve
    findings before finishing or report any that remain open.
 

@@ -15,18 +15,18 @@ export function createSpeechBubble(document = globalThis.document) {
   const announcement = byId(document, 'announcement');
   let previousChapter = -1, previousIndex = -2, previousText = '', previousReaction = null;
 
-  function update(d) {
-    if (d.chapter === previousChapter && d.index === previousIndex
-        && d.text === previousText && d.reaction === previousReaction) return false;
-    previousChapter = d.chapter;
-    previousIndex = d.index;
-    previousText = d.text;
-    previousReaction = d.reaction;
-    speaker.textContent = d.speaker || '';
-    text.textContent = d.text;
-    bubble.dataset.speaker = d.speaker || '';
-    bubble.classList.toggle('visible', d.phase === 'line');
-    announcement.textContent = d.phase === 'line' ? `${d.speaker}: ${d.text}` : '';
+  function update(dialogue) {
+    if (dialogue.chapter === previousChapter && dialogue.index === previousIndex
+        && dialogue.text === previousText && dialogue.reaction === previousReaction) return false;
+    previousChapter = dialogue.chapter;
+    previousIndex = dialogue.index;
+    previousText = dialogue.text;
+    previousReaction = dialogue.reaction;
+    speaker.textContent = dialogue.speaker || '';
+    text.textContent = dialogue.text;
+    bubble.dataset.speaker = dialogue.speaker || '';
+    bubble.classList.toggle('visible', dialogue.phase === 'line');
+    announcement.textContent = dialogue.phase === 'line' ? `${dialogue.speaker}: ${dialogue.text}` : '';
     return true;
   }
 
@@ -77,8 +77,8 @@ export function createPresentation({
     if (playing) chromeTimer = setTimeout(() => document.body.classList.add('cinema'), 2600);
   }
 
-  function updateDialogue(d) {
-    return speechBubble.update(d);
+  function updateDialogue(dialogue) {
+    return speechBubble.update(dialogue);
   }
 
   function positionDialogue(layout) { speechBubble.position(layout); }
