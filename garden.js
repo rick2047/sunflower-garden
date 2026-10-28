@@ -252,15 +252,15 @@ soundBtn.onclick = async () => {
   }
 };
 
-function updateDialogue(d = dialogueAt(S.chapter, S.t)) {
-  if (presentation.updateDialogue(d) && d.phase === 'line') {
+function updateDialogue(dialogue = dialogueAt(S.chapter, S.t)) {
+  if (presentation.updateDialogue(dialogue) && dialogue.phase === 'line') {
     presentation.measureDialogue(S.bubbleSize);
   }
 }
 
-function updateCaption(d) {
+function updateCaption(dialogue) {
   presentation.updateCaption(S.chapter);
-  updateDialogue(d);
+  updateDialogue(dialogue);
 }
 
 function setPlayLabel() {
@@ -312,16 +312,16 @@ function projectDialogueHead(name, target) {
   return true;
 }
 
-function layoutDialogueBubble(ch, storyT, d) {
+function layoutDialogueBubble(ch, storyT, dialogue) {
   S.bubbleUpdateCount++;
-  if (d.phase !== 'line' || !projectDialogueHead(d.speaker, _dialogueAnchor)) {
+  if (dialogue.phase !== 'line' || !projectDialogueHead(dialogue.speaker, _dialogueAnchor)) {
     S.bubbleLayout = null;
     presentation.positionDialogue(null);
     return;
   }
 
   const compact = innerWidth <= 620;
-  if (projectDialogueHead(d.listener, _dialogueListenerAnchor)) {
+  if (projectDialogueHead(dialogue.listener, _dialogueListenerAnchor)) {
     _dialogueObstacle.left = _dialogueListenerAnchor.x - (compact ? 24 : 32);
     _dialogueObstacle.right = _dialogueListenerAnchor.x + (compact ? 24 : 32);
     _dialogueObstacle.top = _dialogueListenerAnchor.y - (compact ? 25 : 32);
@@ -337,7 +337,7 @@ function layoutDialogueBubble(ch, storyT, d) {
   layoutSpeechBubble(_bubbleLayoutInput, _bubbleLayout);
   _bubbleLayout.anchor.x = _dialogueAnchor.x;
   _bubbleLayout.anchor.y = _dialogueAnchor.y;
-  _bubbleLayout.speaker = d.speaker;
+  _bubbleLayout.speaker = dialogue.speaker;
   _bubbleLayout.chapter = ch;
   _bubbleLayout.time = storyT;
   presentation.positionDialogue(_bubbleLayout);
@@ -723,7 +723,7 @@ function applyState(ch, t) {
   const c = CH[ch];
   const act = c.action;
   const storyT = t;
-  const d = dialogueAt(ch, storyT);
+  const dialogue = dialogueAt(ch, storyT);
   S.performance.contacts = {};
   S.performance.joy.paresh = null;
   S.performance.joy.anshita = null;
@@ -1075,17 +1075,17 @@ function applyState(ch, t) {
     // Body yaw is applied before the contact solve: the arm is a child of the
     // torso, so solving first and turning the torso afterwards would publish a
     // hand position the renderer never reaches.
-    const age = d.start === null ? 0 : storyT - d.start;
-    const emphasis = d.speaker ? (reduced ? 1 : smooth(age / 0.45) * smooth((d.end - storyT) / 0.5)) : 0;
+    const age = dialogue.start === null ? 0 : storyT - dialogue.start;
+    const emphasis = dialogue.speaker ? (reduced ? 1 : smooth(age / 0.45) * smooth((dialogue.end - storyT) / 0.5)) : 0;
     const sober = ch >= 4 && ch <= 8;
     const attentive = close ? 0.13 : 0.22;
     for (const [name, sign, body, head, arm, bodyBase, headBase] of [
       ['Paresh', 1, R.pBody, R.pHead, R.pArmR, R.base.pBody, R.base.pHead],
       ['Anshita', -1, R.aBody, R.aHead, R.aArmL, R.base.aBody, R.base.aHead],
     ]) {
-      const speaking = d.speaker === name;
-      const acting = attentionPose(name, c, storyT, d, reduced);
-      const listening = d.speaker && !speaking;
+      const speaking = dialogue.speaker === name;
+      const acting = attentionPose(name, c, storyT, dialogue, reduced);
+      const listening = dialogue.speaker && !speaking;
       const delay = name === 'Anshita' ? 0.22 : 0;
       const reactionAge = Math.max(0, age - delay);
       const nod = reduced ? 0 : Math.sin(reactionAge * (speaking ? 2.1 : 1.3)) * Math.exp(-reactionAge * 0.8);
@@ -1385,9 +1385,9 @@ function applyState(ch, t) {
     b.rotation.y = Math.sin(bt * 0.8 + s);
   });
 
-  updateCaption(d);
+  updateCaption(dialogue);
   updateFilmCard(ch, storyT);
-  layoutDialogueBubble(ch, storyT, d);
+  layoutDialogueBubble(ch, storyT, dialogue);
   sound.update(c, storyT, S.playing && !S.frozen && !document.hidden);
   const progress = clamp(storyT / c.dur, 0, 1) * 100;
   barEl.style.width = progress.toFixed(2) + '%';
