@@ -43,6 +43,61 @@ async page => {
       g.seek(6,1); const pot = g.S.potPivots[0].bone.position.clone();
       g.seek(6,2); assert(pot.equals(g.S.potPivots[0].bone.position), 'Set slides within storm shot');
 
+      const cameraPose = () => ({ position: g.camera.position.clone(), quaternion: g.camera.quaternion.clone() });
+      const cameraStep = (from, to) => ({
+        distance: from.position.distanceTo(to.position),
+        angle: from.quaternion.angleTo(to.quaternion),
+      });
+      const tapeCut = g.chapters[6].dialogue[4].end + 1;
+      g.seek(6, tapeCut - 0.01);
+      const beforeTapeCut = cameraPose();
+      g.seek(6, tapeCut + 0.01);
+      const afterTapeCut = cameraPose();
+      const tapeCutStep = cameraStep(beforeTapeCut, afterTapeCut);
+      assert(tapeCutStep.distance < 0.25 && tapeCutStep.angle < 0.02,
+        `Storm camera jumps at tape cut: ${tapeCutStep.distance.toFixed(2)} units, ${tapeCutStep.angle.toFixed(3)} rad`);
+      const rootAt = who => g.S[who].position.clone();
+      const footHeights = who => ['L','R'].map(side => {
+        const foot = g.S[who].getObjectByName(`foot_${side}__pivot`);
+        foot.updateWorldMatrix(true, false);
+        return foot.getWorldPosition(new g.THREE.Vector3()).y;
+      });
+      for (let chapter = 1; chapter < g.chapters.length; chapter++) {
+        g.seek(chapter - 1, g.chapters[chapter - 1].duration - 0.01);
+        const beforeSceneCut = cameraPose();
+        g.seek(chapter, 0);
+        const sceneCutStep = cameraStep(beforeSceneCut, cameraPose());
+        assert(sceneCutStep.distance < 0.25 && sceneCutStep.angle < 0.02,
+          `Scene ${chapter} camera jumps: ${sceneCutStep.distance.toFixed(2)} units, ${sceneCutStep.angle.toFixed(3)} rad`);
+        if (g.chapters[chapter].id === 'morning-after') continue;
+        const entryEnd = g.chapters[chapter].dialogue[0].start;
+        g.seek(chapter - 1, g.chapters[chapter - 1].duration);
+        const from = { paresh: rootAt('paresh'), anshita: rootAt('anshita') };
+        g.seek(chapter, 0);
+        const start = { paresh: rootAt('paresh'), anshita: rootAt('anshita') };
+        assert(from.paresh.distanceTo(start.paresh) < 0.2
+          && from.anshita.distanceTo(start.anshita) < 0.2,
+        `Actor blocking teleports at chapter ${chapter} entry`);
+        for (const [time, label] of [[entryEnd / 2, 'middle'], [entryEnd, 'dialogue']]) {
+          g.seek(chapter, time);
+          for (const who of ['paresh', 'anshita']) {
+            const position = rootAt(who);
+            if (from[who].distanceTo(position) > 0.5) {
+              assert(position.distanceTo(from[who]) > 0.1,
+                `${who} does not move during ${chapter} ${label} entry`);
+            }
+            const heights = footHeights(who);
+            assert(heights.every(y => y >= 3.85 && y <= 5.55),
+              `${who} leaves the deck during ${chapter} ${label} entry: ${heights}`);
+          }
+        }
+        const dialogueRoots = { paresh: rootAt('paresh'), anshita: rootAt('anshita') };
+        g.seek(chapter, entryEnd + 0.05);
+        assert(dialogueRoots.paresh.distanceTo(rootAt('paresh')) < 0.15
+          && dialogueRoots.anshita.distanceTo(rootAt('anshita')) < 0.15,
+        `Actor blocking is not settled by chapter ${chapter}'s first line`);
+      }
+
       // ---- Authored set geography is chapter-invariant ----
       // Pots, plant roots and flowering props keep one world position in every
       // chapter. Only plant state (growth, breakage, bloom scale) may change.
@@ -182,13 +237,13 @@ async page => {
         assert(Math.abs(g.S[who].position.y - DECK) < 0.03,
           `${label}: ${who} root drifts off the deck (${g.S[who].position.y.toFixed(3)})`);
       };
-      for (const t of [23.3, 23.6, 23.9, 24.2, 24.5, 24.8, 25.1]) {
+      for (const t of [24.15, 24.45, 24.75, 25.05, 25.35, 25.65, 25.95]) {
         g.seek(1, t);
         const kneel = g.performance().kneel;
         assert(kneel.paresh && kneel.anshita, `Missing sow kneel sample at ${t}`);
         kneelFeetOnDeck('paresh', `sow rise ${t}`);
         kneelFeetOnDeck('anshita', `sow rise ${t}`);
-        if (t <= 23.3) {
+        if (t <= 24.15) {
           assert(kneel.paresh.amount > 0.95 && kneel.anshita.amount > 0.95,
             `Sowing kneel not established at ${t}`);
           for (const who of ['paresh','anshita']) for (const side of ['L','R']) {
@@ -197,7 +252,7 @@ async page => {
               `${who} ${side} knee misses the deck during ${t} (${k.y.toFixed(3)})`);
           }
         }
-        if (t >= 25.0) {
+        if (t >= 25.85) {
           assert(kneel.paresh.amount < 0.06 && kneel.anshita.amount < 0.06,
             `Sowing rise not complete at ${t}`);
         }
@@ -221,6 +276,10 @@ async page => {
       }
 
       // ---- Contact/grip/release events, measured on final named pivots ----
+      const stormLines = g.chapters[6].dialogue;
+      const slipAt = stormLines[2].start;
+      const regripAt = stormLines[3].start + 0.2;
+      const tapeRunAt = stormLines[4].end + 1;
       g.seek(1, 6);
       let contacts = g.performance().contacts;
       finalContact(contacts.seed.paresh, 'paresh', 'L', 'sow 6 Paresh');
@@ -239,7 +298,7 @@ async page => {
         'Sowing hands still claim soil contact after the grounded rise');
 
       // Storm grip: both performance() and the final named pivots must agree.
-      g.seek(6, 8.4);
+      g.seek(6, slipAt + 0.45);
       let stem = g.performance().contacts.stem;
       let brokenHinge = hingeAt(0, 'broken');
       assert(new g.THREE.Vector3(...stem.target).distanceTo(brokenHinge) < 1e-6,
@@ -255,7 +314,7 @@ async page => {
       assert(handP.distanceTo(brokenHinge) < 4.5,
         'Failed grip drops the hand entirely instead of slipping off the stem');
 
-      g.seek(6, 11.5);
+      g.seek(6, regripAt + 1.2);
       stem = g.performance().contacts.stem;
       brokenHinge = hingeAt(0, 'broken');
       handA = finalContact(stem.anshitaL, 'anshita', 'L', 'storm 11.5 Anshita');
@@ -265,21 +324,21 @@ async page => {
       assert(handA.distanceTo(brokenHinge) < 0.5 && handP.distanceTo(brokenHinge) < 0.6,
         'Storm re-grip hands miss the broken hinge');
 
-      g.seek(6, 15.5);
+      g.seek(6, stormLines[4].start + 0.5);
       stem = g.performance().contacts.stem;
       brokenHinge = hingeAt(0, 'broken');
       handP = finalContact(stem.pareshR, 'paresh', 'R', 'storm 15.5 Paresh');
       assert(stem.pareshR.distance < 0.6 && handP.distanceTo(brokenHinge) < 0.6,
         'Storm grip releases before "I need the tape" ends');
 
-      g.seek(6, 18.6);
+      g.seek(6, tapeRunAt + 0.2);
       stem = g.performance().contacts.stem;
       brokenHinge = hingeAt(0, 'broken');
       handP = finalContact(stem.pareshR, 'paresh', 'R', 'storm 18.6 Paresh');
       assert(stem.pareshR.distance > 1.5 && handP.distanceTo(brokenHinge) > 1.5,
         'Storm grip does not release for the tape run');
 
-      g.seek(6, 21);
+      g.seek(6, tapeRunAt + 1.5);
       stem = g.performance().contacts.stem;
       brokenHinge = hingeAt(0, 'broken');
       handA = finalContact(stem.anshitaL, 'anshita', 'L', 'storm 21 Anshita');
@@ -349,11 +408,13 @@ async page => {
       // ---- Camera/staging coverage ----
       g.seek(5, 22);
       assert(g.state().shot !== 'establishing', 'Weather-turns has no named windup shot');
-      g.seek(6, 7.5); assert(g.state().shot === 'failed-grip', 'Failed-grip insert missing');
-      g.seek(6, 18.5); assert(g.state().shot === 'tape-run', 'Tape-run shot missing');
+      g.seek(6, stormLines[2].start - 0.1);
+      assert(g.state().shot === 'failed-grip', 'Failed-grip insert missing');
+      g.seek(6, tapeRunAt + 0.1);
+      assert(g.state().shot === 'tape-run', 'Tape-run shot missing');
       g.seek(6, 24.6); assert(g.state().shot === 'return-to-her', 'Return shot missing');
       g.seek(8, 8); assert(g.state().shot === 'shared-repair', 'Repair insert missing');
-      g.seek(7, 0.5);
+      g.seek(7, 1.5);
       assert(g.state().shot === 'empty-doorway', 'Empty-doorway insert missing');
       {
         const forward = g.camera.getWorldDirection(new g.THREE.Vector3());
@@ -365,7 +426,7 @@ async page => {
         assert(Math.abs(door.x) < 1 && Math.abs(door.y) < 1 && door.z < 1,
           'Empty-doorway insert does not frame the open doorway');
       }
-      g.seek(7, 1.5); assert(g.state().shot === 'care-two-shot',
+      g.seek(7, 2.2); assert(g.state().shot === 'care-two-shot',
         'Empty-doorway insert overruns the quiet beat');
       g.seek(10, 16); assert(g.state().shot === 'approach-steps', 'Approach step shot missing');
       g.seek(10, 17.2); assert(g.state().shot === 'shared-joy', 'Shared joy shot missing');

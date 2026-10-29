@@ -11,7 +11,7 @@ import { Soundscape } from '../soundscape.js';
 const sha = (value) => crypto.createHash('sha256').update(value).digest('hex');
 
 assert.equal(CHAPTERS.length, 12, 'screenplay must keep 12 chapters');
-assert.equal(STORY_DURATION, 316.21, 'scene-boundary pacing changed the validated runtime');
+assert.equal(STORY_DURATION, 322.86, 'scene-entry pacing changed the validated runtime');
 assert.equal(sha(JSON.stringify(CHAPTERS.map((c) => c.lines.map(({ speaker, emotion, text, pauseAfter }) =>
   [speaker, emotion, text, pauseAfter])))),
   'a8f189bf899d87ca1e52ce3aa462aea4357dfeb7f6b7c0127ae452f135e1dd3f',
@@ -25,8 +25,10 @@ const closingActionEnds = {
   'morning-after': STORY_CUES['morning-after'].holdEnd,
 };
 for (const chapter of CHAPTERS) {
-  assert.ok(chapter.dialogue[0].start <= 1.5,
-    `${chapter.id} delays its first line beyond the opening beat`);
+  assert.equal(chapter.dialogue[0].start, chapter.entryDuration,
+    `${chapter.id} dialogue should begin when its entry transition completes`);
+  assert.ok(chapter.entryDuration >= 1.15 && chapter.entryDuration <= 3.5,
+    `${chapter.id} entry transition is outside its authored duration`);
   const lastLine = chapter.dialogue.at(-1);
   if (chapter.id === 'summer') {
     assert.ok(Math.abs(chapter.dur - lastLine.end - 4.8) < 0.01,
@@ -49,13 +51,13 @@ assert.ok(capturesFor(CHAPTERS[0]).turn1 > 0);
 
 assert.deepEqual([...JOY_APPROACH.footfalls], [15.9, 16.3, 16.7, 17.1]);
 assert.deepEqual([...JOY_APPROACH.footfallSides], ['R', 'L', 'R', 'L']);
-assert.equal(lineCue('storm', 4, 'end', 1), 17.15);
-assert.equal(STORY_CUES.storm.leaving, 16.35);
-assert.equal(STORY_CUES.storm.tapeRun, 17.15);
+assert.equal(lineCue('storm', 4, 'end', 1), 19.5);
+assert.equal(STORY_CUES.storm.leaving, 18.7);
+assert.equal(STORY_CUES.storm.tapeRun, 19.5);
 assert.equal(STORY_CUES.storm.return, 24.5);
-assert.equal(STORY_CUES['morning-after'].holdStart, 20.95);
-assert.equal(STORY_CUES.sowing.rise, 23.5);
-assert.equal(STORY_CUES.summer.soundFadeStart, 28.75);
+assert.equal(STORY_CUES['morning-after'].holdStart, 22.8);
+assert.equal(STORY_CUES.sowing.rise, 24.35);
+assert.equal(STORY_CUES.summer.soundFadeStart, 29.6);
 assert.equal(STORY_CUES['weather-turns'].flowersFall, 18);
 
 const bubbleLayout = (overrides = {}) => layoutSpeechBubble({
@@ -118,7 +120,7 @@ assert.deepEqual(steps.map((cue) => cue.at), [15.9, 16.3, 16.7, 17.1]);
 assert.ok(steps.every((cue) => cue.kind === 'footstep'));
 assert.deepEqual(steps.map((cue) => cue.side), ['R', 'L', 'R', 'L']);
 assert.deepEqual(FOLEY_CUES.dawn.map((cue) => cue.at), [1.2]);
-assert.deepEqual(FOLEY_CUES['seven-am'].map((cue) => cue.at), [4.15, 5.85]);
+assert.deepEqual(FOLEY_CUES['seven-am'].map((cue) => cue.at), [5, 6.7]);
 
 // Exercise the extracted control module against a minimal DOM double.
 function fakeClassList() {

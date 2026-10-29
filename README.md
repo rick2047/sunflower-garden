@@ -2,7 +2,7 @@
 
 **[Watch the latest published build](https://rick2047.github.io/sunflower-garden/)**
 
-An approximately 5-minute 16-second animated story about Paresh, Anshita, and a balcony garden.
+An approximately 5-minute 23-second animated story about Paresh, Anshita, and a balcony garden.
 This source build presents spoken lines in character speech bubbles; the public
 link tracks the latest deployment and can lag unreleased changes. Use **Play** to
 watch, **Continue** to advance through dialogue, or the chapter dots to jump

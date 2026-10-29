@@ -1,14 +1,22 @@
 # Cinematic improvements
 
-## Scene-edge pacing and listener reactions — 2026-10-29
+## Scene-edge pacing, camera and actor transitions — 2026-10-29
 
-Scene dialogue now begins 1.15 seconds after a cut. Non-final scenes end 1.5
-seconds after their last dialogue or authored action coda; the final scene keeps
-its 4.8-second end-card hold. The runtime is now 316.21 seconds (5:16.21), with
-the original dialogue text and action codas preserved. Every spoken bubble also
-shows a separate emoji reaction anchored near the non-speaking character. The
-browser regression checks every dialogue turn, attribution, proximity, viewport
-bounds at 1440×900 and 390×844, and hiding during quiet beats.
+Camera changes now use absolute story-time blends (0.9 seconds for normal cuts,
+0.35 seconds for urgent storm cuts); scene-entry framing and lighting blend over
+the opening. Actors walk to most authored entry marks with the grounded gait over
+2–3.5 seconds, then reach the first line at the end of that active move. The
+morning-after empty-doorway insert retains its concealed blocking. Reduced-motion
+mode keeps camera and actor transitions instantaneous. The final end-card hold
+remains 4.8 seconds; total runtime is now 322.86 seconds (5:22.86), with dialogue
+text, action codas and contacts preserved.
+
+Each spoken bubble also shows a separate emoji reaction anchored near the
+non-speaking character. `tests/cinematic.cjs` checks every dialogue turn,
+attribution, proximity, viewport bounds at 1440×900 and 390×844, and hiding during
+quiet beats. It also checks camera continuity/replay determinism and actor entry
+root movement, deck height, and arrival before dialogue. This is not a substitute
+for subjective review of the full film.
 
 ## Direct completion pass — 2026-10-28
 
@@ -54,7 +62,9 @@ is no longer blocked on Blockbench.
 
 - [x] Keep rain, bees and clouds moving beyond the bounded action duration.
 - [x] Remove the embrace root-position snap and blend its arm target.
-- [x] Replace generic scene-entry position glides with established blocking/cuts.
+- [x] Transition actors into scene blocking with grounded, deterministic movement.
+  `tests/cinematic.cjs` verifies entry positions progress from the prior scene,
+  remain deck-grounded, and settle at the authored marks before dialogue.
 - [x] Keep character roots grounded; layer subtle breathing on the torso.
 - [x] Make late aftermath tape cues reachable and preserve the broken state.
 - [x] Use elapsed playback time instead of slowing the film at low frame rates.
@@ -83,7 +93,9 @@ is no longer blocked on Blockbench.
 
 ## 3. Camera and editing
 
-- [x] Add chapter-specific shot tracks with purposeful cuts and gentle pushes.
+- [x] Add chapter-specific shot tracks with eased camera moves and gentle pushes.
+  `tests/cinematic.cjs` checks the scene-entry blend and storm cut for bounded
+  camera movement; repeated seeks produce the same view.
 - [x] Add tighter laptop-tension, storm, repair and relationship framing.
 - [x] Reserve the sustained arc/crane for the height reveal; avoid the doorway.
 - [x] Add portrait-specific framing and inspect desktop/mobile captures.
@@ -130,12 +142,12 @@ is no longer blocked on Blockbench.
   *(Provisional round 1 covers the storm slip/re-grip at 7.0/10.2 s, tape pickup
   at 18 s, return cut at 24.5 s, morning hold at 23 s and final-line shot at
   26.5 s; other cues remain fixed.)*
-- [ ] Review the full 316.21-second running time for unearned pauses/repetition.
+- [ ] Review the full 322.86-second running time for unearned pauses/repetition.
 - [x] Remove unmotivated scene-edge pauses while preserving intentional action.
-  Dialogue starts at 1.15 s; non-final scene cuts follow the last meaningful line
-  or authored action coda by 1.5 s. `tests/story-modules.mjs` verifies these
-  limits and the preserved 4.8 s final end-card hold; `tests/cinematic.cjs`
-  passes in Chromium at desktop and mobile viewports.
+  Scene entrances contain active actor movement (2–3.5 s by scene); non-final
+  cuts follow the last meaningful line or authored action coda by 1.5 s. The
+  final end-card hold remains 4.8 s. Pure schedule and desktop/mobile browser
+  regressions pass.
 
 ## 8. Presentation
 

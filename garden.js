@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { BBModelLoader } from './vendor/BBModelLoader.js';
-import { directShot, lightFor } from './film-direction.js';
-import { createPerformer, sharedHandPoint, attachProp, attentionPose } from './actor-performance.js';
+import { directShot, lightFor, SCENE_CAMERA_BLEND_SECONDS } from './film-direction.js';
+import { createPerformer, sharedHandPoint, attachProp, attentionPose, sampleGait } from './actor-performance.js';
 import { Soundscape } from './soundscape.js';
 import { CHAPTERS as CH, STORY_DURATION as storyDuration, capturesFor, dialogueAt } from './screenplay.js';
 import { JOY_APPROACH, STORY_CUES } from './story-cues.js';
@@ -17,6 +17,7 @@ const POT_X = [-13, 0, 13], POT_Z = -1;
 // geometry adds ~0.15. Kneeling derives its root drop from this plus the real
 // knee pivots, so both character exports land on the deck without guessing.
 const DECK_TOP = 4.15;
+const CHAPTER_LIGHTS = CH.map(lightFor);
 const SPOTS = {
   tulip: [-26, 4, 20], petunia: [0, 4, 18], mogra: [26, 4, 20],
   tomato: [-9, 4, 13], capsicum: [9, 4, 13],
@@ -139,6 +140,111 @@ function sowingPlan(chapter, storyT) {
     share: smooth((storyT - (lines[5]?.start ?? 17)) / 0.7),
   };
 }
+const CHAPTER_END_SOW_FOCUS = CH.map((chapter) => chapter.id === 'sowing'
+  ? sowingPlan(chapter, chapter.dur).focusX : 0);
+
+const _actorRootTargets = { paresh: new THREE.Vector3(), anshita: new THREE.Vector3() };
+function actorRootTargets(ch, storyT, result = _actorRootTargets) {
+  const chapter = CH[ch], act = chapter.action;
+  const actionShot = ch >= 6 && ch <= 8;
+  const joyful = act === 'joy';
+  const close = ['sow','repair','tend','sit_together','aftermath','ending'].includes(act);
+  const sow = ch === 1 ? sowingPlan(chapter, storyT) : null;
+  const txP = act === 'sow' ? sow.pareshX : act === 'aftermath' ? -8 :
+    act === 'storm' ? 4 : act === 'repair' ? -10 : actionShot ? -22 : act === 'distance' ? -24 :
+    act === 'measure' ? -3 : close ? -8 : ch === 9 ? -18 : joyful ? JOY_MARKS.paresh.startX : PA_BASE[0];
+  const txA = act === 'sow' ? sow.anshitaX : act === 'aftermath' ? 8 :
+    act === 'storm' ? -11.5 : act === 'repair' ? 10 : actionShot ? 22 : act === 'distance' ? 24 :
+    act === 'measure' ? 3 : close ? 8 : ch === 9 ? 18 : joyful ? JOY_MARKS.anshita.startX : AN_BASE[0];
+  const tz = act === 'sow' ? SOW_ACTOR_Z : act === 'aftermath' ? 5 :
+    act === 'storm' ? 5.4 : act === 'repair' ? 9.0 : actionShot ? (ch === 8 ? 9.0 : 5) : act === 'distance' ? 2 :
+    act === 'measure' ? 12.5 : close ? 5 : ch === 9 ? 8 : joyful ? 6 : PA_BASE[2];
+  const rootY = act === 'sow' || act === 'storm' || act === 'measure' || joyful
+    ? DECK_TOP : 4;
+  result.paresh.set(txP, rootY, tz);
+  result.anshita.set(txA, rootY, tz);
+  if (ch === 4) result.paresh.set(-20, 4, -22);
+  else if (ch === 6) {
+    if (storyT >= STORM_RETURN_AT) result.paresh.set(0, DECK_TOP, -9.2);
+    else if (storyT >= STORY_CUES.storm.tapeRun) result.paresh.set(9, DECK_TOP, 7);
+    else result.paresh.set(3.2, DECK_TOP, 7.35 - ACTION_SET_DEPTH);
+    result.anshita.set(-20, DECK_TOP, -9);
+  } else if (ch === 8) {
+    result.paresh.set(-8.4, 4, 8.45 - ACTION_SET_DEPTH);
+    result.anshita.set(8.2, 4, 8.55 - ACTION_SET_DEPTH);
+  }
+  if (joyful && S.joyPlans) {
+    const paresh = sampleGait(S.joyPlans.paresh, storyT);
+    const anshita = sampleGait(S.joyPlans.anshita, storyT);
+    result.paresh.set(paresh.rootX, paresh.rootY, paresh.rootZ);
+    result.anshita.set(anshita.rootX, anshita.rootY, anshita.rootZ);
+  }
+  return result;
+}
+
+function actorKneelAt(ch, storyT) {
+  const chapter = CH[ch];
+  if (chapter.action === 'sow') {
+    const rise = smooth((storyT - STORY_CUES.sowing.rise) / 1.5);
+    const amount = 1 - rise;
+    return { paresh: amount, anshita: amount,
+      settle: amount * smooth((storyT - 21) / 1.5) };
+  }
+  if (chapter.action === 'storm') {
+    const span = Math.max(0.01, STORM_KNEEL.inEnd - STORM_KNEEL.inStart);
+    const amount = smooth((storyT - STORM_KNEEL.inStart) / span);
+    const settle = amount * smooth((storyT - STORM_KNEEL.inEnd)
+      / Math.max(0.01, STORM_KNEEL.settleEnd - STORM_KNEEL.inEnd));
+    return { paresh: amount, anshita: 0, settle };
+  }
+  if (chapter.action === 'measure') return { paresh: MEASURE_CROUCH, anshita: 0, settle: 0 };
+  return { paresh: 0, anshita: 0, settle: 0 };
+}
+
+function buildEntryPlans() {
+  const plans = Array(CH.length).fill(null);
+  const from = { paresh: new THREE.Vector3(), anshita: new THREE.Vector3() };
+  const to = { paresh: new THREE.Vector3(), anshita: new THREE.Vector3() };
+  for (let ch = 1; ch < CH.length; ch++) {
+    actorRootTargets(ch - 1, CH[ch - 1].dur, from);
+    actorRootTargets(ch, 0, to);
+    const duration = CH[ch].entryDuration;
+    const previousPose = actorKneelAt(ch - 1, CH[ch - 1].dur);
+    const nextPose = actorKneelAt(ch, 0);
+    const distance = Math.max(
+      Math.hypot(to.paresh.x - from.paresh.x, to.paresh.z - from.paresh.z),
+      Math.hypot(to.anshita.x - from.anshita.x, to.anshita.z - from.anshita.z));
+    const recoveringFromKneel = Math.max(previousPose.paresh, previousPose.anshita) > 0.05;
+    const kind = CH[ch].id === 'morning-after' ? 'cut'
+      : recoveringFromKneel || distance < 1.5 ? 'ease' : 'gait';
+    const poseDuration = ['sow','measure'].includes(CH[ch].action) ? 0.65 : 0.15;
+    const walkStart = 0;
+    const walkEnd = Math.max(walkStart + 0.1, duration - poseDuration);
+    const steps = Math.max(2, Math.min(8, Math.ceil(distance / 6)));
+    const plan = { duration, walkStart, walkEnd, kind,
+      from: { paresh: from.paresh.clone(), anshita: from.anshita.clone() },
+      to: { paresh: to.paresh.clone(), anshita: to.anshita.clone() },
+      fromPose: previousPose, toPose: nextPose, paresh: null, anshita: null,
+      pareshWalkEndY: to.paresh.y, anshitaWalkEndY: to.anshita.y };
+    if (plan.kind === 'gait' && walkEnd > walkStart) {
+      plan.paresh = S.performers.paresh.planGait({
+        start: { x: from.paresh.x, z: from.paresh.z },
+        end: { x: to.paresh.x, z: to.paresh.z },
+        startTime: walkStart, endTime: walkEnd, steps, lift: 0.9, groundY: DECK_TOP,
+      });
+      plan.anshita = S.performers.anshita.planGait({
+        start: { x: from.anshita.x, z: from.anshita.z },
+        end: { x: to.anshita.x, z: to.anshita.z },
+        startTime: walkStart, endTime: walkEnd, steps, lift: 0.9, groundY: DECK_TOP,
+      });
+      plan.pareshWalkEndY = sampleGait(plan.paresh, walkEnd).rootY;
+      plan.anshitaWalkEndY = sampleGait(plan.anshita, walkEnd).rootY;
+    }
+    plans[ch] = plan;
+  }
+  return plans;
+}
+
 // deterministic pseudo-random (no Math.random anywhere → reproducible frames)
 const rnd = (i, s) => { const x = Math.sin(i * 127.1 + s * 311.7) * 43758.5453; return x - Math.floor(x); };
 
@@ -186,9 +292,10 @@ const S = {
   laptopScreen: null, laptopKeyboard: null, laptopHome: null, laptopMode: 'hidden',
   models: [], assetWarnings: [], filmCard: null,
   bubbleLayout: null, bubblePlacement: null, listenerReactionLayout: null,
+  entryPlans: null, entryProgress: 1,
   bubbleOffset: { x: 0, y: 0 },
   bubbleSize: { width: 0, height: 0 }, bubbleNeedsLayout: true, bubbleUpdateCount: 0,
-  performers: null, performance: { joy: {}, kneel: {}, contacts: {} },
+  performers: null, performance: { joy: {}, kneel: {}, contacts: {}, entry: null },
 };
 
 window.__garden = {
@@ -196,7 +303,8 @@ window.__garden = {
   ready: false,
   storyDuration,
   chapters: CH.map((c) => ({ id: c.id, title: c.title, duration: c.dur,
-    visualDuration: c.visualDur, dialogue: c.dialogue.map(line => ({ ...line })),
+    visualDuration: c.visualDur, entryDuration: c.entryDuration,
+    dialogue: c.dialogue.map(line => ({ ...line })),
     captures: capturesFor(c), cues: c.cues || null,
      endCardStart: c.id === 'summer' ? STORY_CUES.summer.endCardStart : null,
      endCardTitleStart: c.id === 'summer' ? STORY_CUES.summer.endCardTitleStart : null })),
@@ -790,8 +898,14 @@ function applyState(ch, t) {
   const c = CH[ch];
   const act = c.action;
   const storyT = t;
+  const entry = S.entryPlans?.[ch] || null;
+  const entryActive = !reduced && entry && storyT < entry.duration;
+  const entryWalking = Boolean(entryActive && entry.kind === 'gait' && storyT < entry.walkEnd);
+  const entryProgress = entryActive ? smooth(storyT / entry.duration) : 1;
+  S.entryProgress = entryProgress;
   const dialogue = dialogueAt(ch, storyT);
   S.performance.contacts = {};
+  S.performance.entry = null;
   S.performance.joy.paresh = null;
   S.performance.joy.anshita = null;
   S.performance.kneel.paresh = null;
@@ -802,7 +916,6 @@ function applyState(ch, t) {
   t = Math.min(t, c.visualDur);
   const prev = CH[(ch - 1 + CH.length) % CH.length];
   const k = clamp(t / c.visualDur, 0, 1);
-  const skyT = 1; // Editorial cuts include the new scene's light, not yesterday's sky.
 
   // Authored set geography is chapter-invariant: every pot and plant keeps its
   // authored base. Growth, breakage, bloom scale and visibility may change,
@@ -823,22 +936,25 @@ function applyState(ch, t) {
     }
   }
 
-  // sky + light ease from the previous beat
-  _skyA.set(prev.sky); _skyB.set(c.sky);
-  scene.background.copy(_skyA).lerp(_skyB, skyT);
+  const previousLight = ch > 0 ? CHAPTER_LIGHTS[ch - 1] : CHAPTER_LIGHTS[ch];
+  const lighting = CHAPTER_LIGHTS[ch];
+  const lightProgress = ch > 0 && !reduced
+    ? smooth(storyT / c.entryDuration)
+    : 1;
+  _skyA.set(previousLight.sky); _skyB.set(lighting.sky);
+  scene.background.copy(_skyA).lerp(_skyB, lightProgress);
   scene.fog.color.copy(scene.background);
-  sunLight.intensity = lerp(prev.sun, c.sun, skyT);
-  sunLight.color.set(prev.sunCol).lerp(_sunCol.set(c.sunCol), skyT);
-  hemi.intensity = lerp(1.6, c.rain ? 0.8 : 1.6, skyT);
-  const lighting = lightFor(c);
-  scene.background.set(lighting.sky); scene.fog.color.copy(scene.background);
-  sunLight.intensity = lighting.key; sunLight.color.set(lighting.color);
-  sunLight.position.set(lighting.x, 48, lighting.z);
-  hemi.intensity = lighting.hemi; fillLight.intensity = lighting.fill;
-  ambientLight.intensity = lighting.ambient;
+  sunLight.intensity = lerp(previousLight.key, lighting.key, lightProgress);
+  sunLight.color.set(previousLight.color).lerp(_sunCol.set(lighting.color), lightProgress);
+  sunLight.position.set(lerp(previousLight.x, lighting.x, lightProgress), 48,
+    lerp(previousLight.z, lighting.z, lightProgress));
+  hemi.intensity = lerp(previousLight.hemi, lighting.hemi, lightProgress);
+  fillLight.intensity = lerp(previousLight.fill, lighting.fill, lightProgress);
+  ambientLight.intensity = lerp(previousLight.ambient, lighting.ambient, lightProgress);
 
   // Camera direction is independent of the bounded physical-action clock.
-  S.shot = directShot(camera, _lookCur, c, storyT, reduced, sow?.focusX);
+  S.shot = directShot(camera, _lookCur, c, storyT, reduced, sow?.focusX,
+    ch > 0 ? prev : null, ch > 0 ? CHAPTER_END_SOW_FOCUS[ch - 1] : 0);
 
   // variant visibility
   const firstBloom = c.id === 'good-things';
@@ -1006,52 +1122,29 @@ function applyState(ch, t) {
     // Every authored bone this frame is rebuilt from the captured base; no
     // previous-frame pose can leak across a seek.
     P.reset(); A.reset();
-    const actionShot = ch >= 6 && ch <= 8;
     const joyful = act === 'joy';
     const close = ['sow','repair','tend','sit_together','aftermath','ending'].includes(act);
     const joyApproach = joyful ? smooth((storyT - JOY_APPROACH.start) / (JOY_APPROACH.end - JOY_APPROACH.start)) : 0;
-    // At the tall-green beat they step in front of the leafy backdrop together;
-    // otherwise its authored leaves cross their faces during the conversation.
-    const txP = act === 'sow' ? sow.pareshX : act === 'aftermath' ? -8 :
-      act === 'storm' ? 4 : act === 'repair' ? -10 : actionShot ? -22 : act === 'distance' ? -24 :
-      act === 'measure' ? -3 : close ? -8 : ch === 9 ? -18 : joyful ? JOY_MARKS.paresh.startX : PA_BASE[0];
-    const txA = act === 'sow' ? sow.anshitaX : act === 'aftermath' ? 8 :
-      act === 'storm' ? -11.5 : act === 'repair' ? 10 : actionShot ? 22 : act === 'distance' ? 24 :
-      act === 'measure' ? 3 : close ? 8 : ch === 9 ? 18 : joyful ? JOY_MARKS.anshita.startX : AN_BASE[0];
-    const tz = act === 'sow' ? SOW_ACTOR_Z : act === 'aftermath' ? 5 :
-      act === 'storm' ? 5.4 : act === 'repair' ? 9.0 : actionShot ? (ch === 8 ? 9.0 : 5) : act === 'distance' ? 2 :
-      act === 'measure' ? 12.5 : close ? 5 : ch === 9 ? 8 : joyful ? 6 : PA_BASE[2];
-    // Blocking is established at the cut. Do not glide in from generic bases.
-    const et = 1;
+    // Each scene has a deterministic move from the prior scene's final marks.
+    const marks = actorRootTargets(ch, storyT, _actorRootTargets);
+    S.paresh.position.copy(marks.paresh);
+    S.anshita.position.copy(marks.anshita);
+    if (entryActive && entry.kind === 'cut' && c.id === 'morning-after'
+        && storyT < SCENE_CAMERA_BLEND_SECONDS) {
+      S.paresh.position.copy(entry.from.paresh);
+      S.anshita.position.copy(entry.from.anshita);
+    } else if (entryActive && entry.kind === 'ease') {
+      S.paresh.position.lerpVectors(entry.from.paresh, entry.to.paresh, entryProgress);
+      S.anshita.position.lerpVectors(entry.from.anshita, entry.to.anshita, entryProgress);
+    } else if (entryActive && entry.kind === 'gait' && storyT >= entry.walkEnd) {
+      const settle = smooth((storyT - entry.walkEnd)
+        / Math.max(0.01, entry.duration - entry.walkEnd));
+      S.paresh.position.y = lerp(entry.pareshWalkEndY, marks.paresh.y, settle);
+      S.anshita.position.y = lerp(entry.anshitaWalkEndY, marks.anshita.y, settle);
+    }
+    const et = entryProgress;
     const bob = 0; // Root height stays grounded; breathing belongs to the torso.
     const pose = poseFor(act, t);
-    S.paresh.position.set(txP, act === 'sow' || act === 'storm' || act === 'measure' || joyful
-      ? DECK_TOP : 4 + bob * 0.5, tz);
-    S.anshita.position.set(txA, act === 'sow' || act === 'storm' || act === 'measure' || joyful
-      ? DECK_TOP : 4 + bob * 0.4, tz);
-    if (ch === 4) {
-      // Paresh is at the room table; the camera work is in film-direction.js.
-      S.paresh.position.set(-20, 4, -22);
-    } else if (ch === 6) {
-      // He holds with her through "Don't let go", leaves one second after
-      // "I need the tape", then returns on the authored 24.5 s cut. The tape run
-      // is an editorial cut, not a root slide through the set.
-      // The fixed pot row puts the broken hinge 15 units behind the old action
-      // bay, so the stem-holding marks use the authored bay minus that depth.
-      // The tape mark stays at the fixed tape prop; only the tape hand moves.
-      if (storyT >= STORM_RETURN_AT) S.paresh.position.set(0, DECK_TOP, -9.2);
-      else if (storyT >= STORY_CUES.storm.tapeRun) S.paresh.position.set(9, DECK_TOP, 7);
-      else S.paresh.position.set(3.2, DECK_TOP, 7.35 - ACTION_SET_DEPTH);
-      S.anshita.position.set(-20, DECK_TOP, -9);
-    } else if (ch === 8) {
-      // Middle-pot repair: each actor stands back far enough that the repaired
-      // hinge is on that arm's rigid reach sphere (Paresh 7.827, Anshita 7.402),
-      // so the two hand spheres intersect on the joint instead of two hands
-      // meeting short of it. The marks differ because their arm lengths do.
-      // The fixed middle pot is 15 units behind the old bay; actors reblock.
-      S.paresh.position.set(-8.4, 4, 8.45 - ACTION_SET_DEPTH);
-      S.anshita.position.set(8.2, 4, 8.55 - ACTION_SET_DEPTH);
-    }
     // Scene 10 pins the authored backs together along one axis: each actor
     // faces outward, so the pair reads as opposing back-to-back torsos while
     // the authored head bones turn far enough for both faces to stay readable.
@@ -1062,44 +1155,51 @@ function applyState(ch, t) {
 
     // Scene 11: four real side-steps each, planted in world space, ending in the
     // shared posing mark. The gait sets root X/Y/Z from story time.
-    if (joyful) {
+    if (entryWalking) {
+      S.performance.entry = {
+        paresh: P.gait(entry.paresh, storyT),
+        anshita: A.gait(entry.anshita, storyT),
+      };
+    } else if (joyful && !entryActive) {
       S.performance.joy.paresh = P.gait(S.joyPlans.paresh, storyT);
       S.performance.joy.anshita = A.gait(S.joyPlans.anshita, storyT);
     }
 
     const R = S.rig;
-    const E = 1;
+    const E = entryProgress;
 
     // Grounded kneel/settle/rise and the joy gait own the legs and root. The
     // measure crouch retains its own authored head-height solve.
-    let pKneel = 0, aKneel = 0, pSettle = 0, aSettle = 0;
-    if (act === 'sow') {
-      // The pair rises after their last line ("Let them come and water it.")
-      // while the chapter still holds on the finished corner.
-      const rise = smooth((storyT - STORY_CUES.sowing.rise) / 1.5);
-      pKneel = aKneel = 1 - rise;
-      pSettle = aSettle = (1 - rise) * smooth((storyT - 21.0) / 1.5);
-    } else if (act === 'storm') {
-      // Return cut at 24.5 s; he lowers onto the deck and settles beside her.
-      const inSpan = Math.max(0.01, STORM_KNEEL.inEnd - STORM_KNEEL.inStart);
-      pKneel = smooth((storyT - STORM_KNEEL.inStart) / inSpan);
-      pSettle = pKneel * smooth((storyT - STORM_KNEEL.inEnd)
-        / Math.max(0.01, STORM_KNEEL.settleEnd - STORM_KNEEL.inEnd));
+    const authoredKneel = actorKneelAt(ch, storyT);
+    let pKneel = authoredKneel.paresh, aKneel = authoredKneel.anshita;
+    let pSettle = authoredKneel.settle, aSettle = authoredKneel.settle;
+    if (entryActive) {
+      const poseProgress = entry.kind === 'gait'
+        ? smooth((storyT - entry.walkEnd) / Math.max(0.01, entry.duration - entry.walkEnd))
+        : entryProgress;
+      pKneel = lerp(entry.fromPose.paresh, entry.toPose.paresh, poseProgress);
+      aKneel = lerp(entry.fromPose.anshita, entry.toPose.anshita, poseProgress);
+      pSettle = aSettle = lerp(entry.fromPose.settle, entry.toPose.settle, poseProgress);
     }
     if (act === 'measure') {
-      setGroundedKneel(R.pBody, R.base.pBody, [
-        { hip:R.pHipL, knee:R.pKneeL, foot:R.pFootL, hipBase:R.base.pHipL, kneeBase:R.base.pKneeL, footBase:R.base.pFootL },
-        { hip:R.pHipR, knee:R.pKneeR, foot:R.pFootR, hipBase:R.base.pHipR, kneeBase:R.base.pKneeR, footBase:R.base.pFootR },
-      ], MEASURE_CROUCH);
-      setGroundedKneel(R.aBody, R.base.aBody, [
-        { hip:R.aHipL, knee:R.aKneeL, foot:R.aFootL, hipBase:R.base.aHipL, kneeBase:R.base.aKneeL, footBase:R.base.aFootL },
-        { hip:R.aHipR, knee:R.aKneeR, foot:R.aFootR, hipBase:R.base.aHipR, kneeBase:R.base.aKneeR, footBase:R.base.aFootR },
-      ], 0);
-      S.performance.kneel.paresh = { amount: MEASURE_CROUCH, settle: 0, stance: 'measure' };
-      S.performance.kneel.anshita = { amount: 0, settle: 0, stance: 'measure' };
-    } else if (act === 'sow' || act === 'storm') {
-      S.performance.kneel.paresh = P.kneel(pKneel, pSettle);
-      S.performance.kneel.anshita = A.kneel(aKneel, aSettle);
+      if (!entryWalking) {
+        setGroundedKneel(R.pBody, R.base.pBody, [
+          { hip:R.pHipL, knee:R.pKneeL, foot:R.pFootL, hipBase:R.base.pHipL, kneeBase:R.base.pKneeL, footBase:R.base.pFootL },
+          { hip:R.pHipR, knee:R.pKneeR, foot:R.pFootR, hipBase:R.base.pHipR, kneeBase:R.base.pKneeR, footBase:R.base.pFootR },
+        ], pKneel);
+        setGroundedKneel(R.aBody, R.base.aBody, [
+          { hip:R.aHipL, knee:R.aKneeL, foot:R.aFootL, hipBase:R.base.aHipL, kneeBase:R.base.aKneeL, footBase:R.base.aFootL },
+          { hip:R.aHipR, knee:R.aKneeR, foot:R.aFootR, hipBase:R.base.aHipR, kneeBase:R.base.aKneeR, footBase:R.base.aFootR },
+        ], aKneel);
+      }
+      S.performance.kneel.paresh = { amount: pKneel, settle: pSettle, stance: 'measure' };
+      S.performance.kneel.anshita = { amount: aKneel, settle: aSettle, stance: 'measure' };
+    } else if (act === 'sow' || act === 'storm'
+        || (entryActive && entry.kind !== 'gait')) {
+      if (!entryWalking) {
+        S.performance.kneel.paresh = P.kneel(pKneel, pSettle);
+        S.performance.kneel.anshita = A.kneel(aKneel, aSettle);
+      }
     } else {
       S.performance.kneel.paresh = { amount: 0, settle: 0, stance: joyful ? 'gait' : 'stand' };
       S.performance.kneel.anshita = { amount: 0, settle: 0, stance: joyful ? 'gait' : 'stand' };
@@ -1636,6 +1736,7 @@ async function init() {
       steps: JOY_APPROACH.steps, lift: JOY_APPROACH.lift, yaw: JOY_MARKS.anshita.yaw,
     }),
   };
+  S.entryPlans = buildEntryPlans();
   // Preserve authored personal accessories in the exports, but free their hands
   // for garden actions; no replacement character geometry is constructed here.
   S.laptop = B(S.paresh, 'laptop');

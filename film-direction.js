@@ -2,9 +2,14 @@
 // Coordinates describe the existing Blockbench set; no geometry lives here.
 const ease = x => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
 const mix = (a, b, t) => a + (b - a) * t;
+const pose = () => ({ position: [0, 0, 0], target: [0, 0, 0], shot: '', start: 0 });
+const _rawPose = pose(), _cutFrom = pose(), _cutPose = pose(), _sceneFrom = pose(), _finalPose = pose();
+const CUT_BLEND_SECONDS = 0.9;
+const STORM_CUT_BLEND_SECONDS = 0.35;
+export const SCENE_CAMERA_BLEND_SECONDS = 1.15;
 
-export function directShot(camera, look, chapter, seconds, reduced, sowFocus = 0) {
-  const mobile = camera.aspect < 1;
+function sampleShotPose(aspect, chapter, seconds, reduced, sowFocus, result) {
+  const mobile = aspect < 1;
   const id = chapter.id;
   let target = [0, 19, 3], offset = [7, 12, mobile ? 130 : 100], start = 0;
   let shot = 'establishing';
@@ -59,12 +64,13 @@ export function directShot(camera, look, chapter, seconds, reduced, sowFocus = 0
         frame('return-to-her', 24.5, [-9, 18, -3], [mobile ? 0 : 7, mobile ? 54 : 34, mobile ? 90 : 43]);
       }
     } else if (id === 'morning-after') {
-      if (seconds < chapter.dialogue[0].start) {
+      const doorwayHold = Math.max(0, chapter.dialogue[0].start - CUT_BLEND_SECONDS);
+      if (seconds < doorwayHold) {
         // Quiet opening insert: a head-on level view of the open doorway, with
         // both actors behind the camera plane, so the opening is actually empty.
         frame('empty-doorway', 0, [-18, 20, -15.6], [0, 0, 17.6]);
       } else {
-        frame('care-two-shot', 3, [0, 20, 12], [4, 10, mobile ? 110 : 78]);
+        frame('care-two-shot', doorwayHold, [0, 20, 12], [4, 10, mobile ? 110 : 78]);
       }
       if (seconds >= 11) frame('the-silence-between', 11, [0, 23, 5], [5, 4, mobile ? 100 : 70]);
       const handoffAt = chapter.dialogue[4].start;
@@ -83,10 +89,12 @@ export function directShot(camera, look, chapter, seconds, reduced, sowFocus = 0
     const lift = reduced ? 1 : ease((seconds - 16) / 8);
     const radius = mobile ? 104 : 76;
     target = [0, mix(25, 29, lift), 7];
-    camera.position.set(Math.sin(reduced ? 0 : orbit) * radius,
-      reduced ? 34 : mix(10, 50, lift), 7 + Math.cos(reduced ? 0 : orbit) * radius);
-    look.set(...target); camera.lookAt(look);
-    return 'height-reveal';
+    result.position[0] = Math.sin(reduced ? 0 : orbit) * radius;
+    result.position[1] = reduced ? 34 : mix(10, 50, lift);
+    result.position[2] = 7 + Math.cos(reduced ? 0 : orbit) * radius;
+    result.target[0] = target[0]; result.target[1] = target[1]; result.target[2] = target[2];
+    result.shot = 'height-reveal'; result.start = 0;
+    return result;
   } else if (id === 'bloom') {
     frame('flower-reveal', 0, [0, 35, 0], [12, 8, mobile ? 126 : 98]);
     if (seconds >= 15.5 && seconds < 17.1) {
@@ -110,13 +118,60 @@ export function directShot(camera, look, chapter, seconds, reduced, sowFocus = 0
   } else if (seconds >= 9 && id !== 'weather-turns') {
     frame('garden-two-shot', 9, [0, 25, -2], [6, 8, mobile ? 140 : 91]);
   }
-  // A barely perceptible push inside a shot; cuts never interpolate through the set.
+  // A barely perceptible push inside the shot; authored cut times remain stable.
   const push = reduced ? 1 : 1 - 0.035 * ease((seconds - start) / 12);
-  look.set(...target);
-  camera.position.set(target[0] + offset[0] * push, target[1] + offset[1] * push,
-    target[2] + offset[2] * push);
+  result.target[0] = target[0]; result.target[1] = target[1]; result.target[2] = target[2];
+  result.position[0] = target[0] + offset[0] * push;
+  result.position[1] = target[1] + offset[1] * push;
+  result.position[2] = target[2] + offset[2] * push;
+  result.shot = shot; result.start = start;
+  return result;
+}
+
+function blendPose(from, to, amount, result) {
+  const t = ease(amount);
+  for (let axis = 0; axis < 3; axis++) {
+    result.position[axis] = mix(from.position[axis], to.position[axis], t);
+    result.target[axis] = mix(from.target[axis], to.target[axis], t);
+  }
+  result.shot = to.shot;
+  result.start = to.start;
+  return result;
+}
+
+function copyPose(source, result) {
+  for (let axis = 0; axis < 3; axis++) {
+    result.position[axis] = source.position[axis];
+    result.target[axis] = source.target[axis];
+  }
+  result.shot = source.shot;
+  result.start = source.start;
+  return result;
+}
+
+export function directShot(camera, look, chapter, seconds, reduced, sowFocus = 0,
+  previousChapter = null, previousSowFocus = 0) {
+  const current = sampleShotPose(camera.aspect, chapter, seconds, reduced, sowFocus, _rawPose);
+  let destination = copyPose(current, _cutPose);
+  const cutBlend = chapter.id === 'storm' ? STORM_CUT_BLEND_SECONDS : CUT_BLEND_SECONDS;
+
+  if (!reduced && current.start > 0 && seconds < current.start + cutBlend) {
+    const from = sampleShotPose(camera.aspect, chapter, current.start - 0.001,
+      false, sowFocus, _cutFrom);
+    destination = blendPose(from, current,
+      (seconds - current.start) / cutBlend, _cutPose);
+  }
+
+  if (!reduced && previousChapter && seconds < SCENE_CAMERA_BLEND_SECONDS) {
+    const from = sampleShotPose(camera.aspect, previousChapter, previousChapter.dur,
+      false, previousSowFocus, _sceneFrom);
+    destination = blendPose(from, destination, seconds / SCENE_CAMERA_BLEND_SECONDS, _finalPose);
+  }
+
+  look.set(destination.target[0], destination.target[1], destination.target[2]);
+  camera.position.set(destination.position[0], destination.position[1], destination.position[2]);
   camera.lookAt(look);
-  return shot;
+  return current.shot;
 }
 
 export function lightFor(chapter) {
