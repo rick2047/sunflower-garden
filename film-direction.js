@@ -95,9 +95,11 @@ function sampleShotPose(aspect, chapter, seconds, reduced, sowFocus, result) {
   } else if (id === 'measure') {
     // Save the sustained orbit and crane for the title's payoff.
     // Remain on the balcony side of the doorway and preserve screen direction.
-    const orbit = mix(-0.3, 0.3, ease((seconds - 2) / 14));
+    // Hold a stronger balcony-side angle through the reveal: it separates the
+    // tall stalks from both face silhouettes while preserving the height arc.
+    const orbit = mix(0.55, 0.85, ease((seconds - 2) / 14));
     const lift = reduced ? 1 : ease((seconds - 16) / 8);
-    const radius = mobile ? 104 : 76;
+    const radius = mobile ? 148 : 76;
     target = [0, mix(25, 29, lift), 7];
     result.position[0] = Math.sin(reduced ? 0 : orbit) * radius;
     result.position[1] = reduced ? 34 : mix(10, 50, lift);
@@ -114,7 +116,9 @@ function sampleShotPose(aspect, chapter, seconds, reduced, sowFocus, result) {
     } else if (seconds >= 16.2) {
       // Begin this move during the last step so the held hands are composed
       // when the shared contact completes at 17.1 seconds.
-      frame('shared-joy', 16.2, [0, 25, 8], [0, mobile ? 28 : 18, mobile ? 105 : 68]);
+      // A slight off-axis view separates the joined hands from the fixed
+      // foreground flower pots while retaining the flower-height payoff.
+      frame('shared-joy', 16.2, [0, 23, 8], [mobile ? 18 : 14, mobile ? 24 : 15, mobile ? 105 : 68]);
     }
   } else if (id === 'summer') {
     frame('last-light', 0, [0, 27, 1], [14, 13, mobile ? 126 : 105]);

@@ -22,24 +22,27 @@ at `.artifacts/visual-audit-2026-10-29/`.
 
 ## Current implementation status — 2026-10-29
 
-- **A — tape-run:** `film-direction.js` now uses a closer insert centered on the
-  tape hand and held hinge. Runtime assertions and rendered captures passed at
-  1440×900 and 390×844; runtime checks confirm the tape-to-hand and hand-to-hinge
-  attachments. The rendered tape-to-stem fastening remains ambiguous in some
-  angles, so image acceptance is still partial. The shot blend and actor/set
-  positions are unchanged.
+- **A — tape-run:** `film-direction.js` uses a closer insert centered on the
+  tape hand and held hinge. Paresh now approaches the fixed broken hinge during
+  the existing tape run, and the working hand/tape reach the held hinge at t=22.5.
+  Desktop and mobile captures were inspected; small-prop visibility remains
+  stylized, but the action reads as fastening contact. Set positions are
+  unchanged.
 - **B — contacts/readability:** sowing hands and placed seeds moved inward together
   (`SOW_SOIL_Z = -0.2`); the shared-repair view is less overhead; the shared-joy
   move begins at 16.2 s and is settled at the 17.1 s hand contact; one bee has a
   small deterministic lateral detour around Anshita's face. Morning handoff poses
   were sampled, passed hand-to-face clearance assertions at the cited times, and
-  were left unchanged. Fresh storm slip/re-grip captures remain crowded, and the
-  bloom hold's joined hands are still crowded by foreground flowers. This is not a
-  complete review of every listed action frame.
+  were left unchanged. The storm slip now moves Paresh's hand visibly off the
+  hinge and restores it for re-grip; the bloom camera is slightly off-axis and the
+  joined hands move farther toward camera, clearing foreground blooms in sampled
+  desktop/mobile captures. This is not a complete review of every listed action
+  frame.
 - **C — measure:** the end of seven-am now pre-rolls into the measure camera pose.
   Projected stalk-tip bounds pass at 0.08, 14.58, and 29.58 s in both viewports.
-  Foliage still overlaps some face silhouettes, so the broader reveal review is
-  partial.
+  Measure actors are spaced farther apart and the orbit moves to the balcony side;
+  mobile uses a wider camera radius. Sampled captures at 1440×900 and 390×844 keep
+  both faces and tall stalks in frame. Continuous reveal review remains open.
 - **D — models:** no model geometry changed. Paresh's headphone, shoe, and jaw
   candidates were not confirmed defects. The apparent Anshita hip canister is the
   coffee cup/steam group; the scalp wedge and reach-pose hair clearance remain
@@ -50,8 +53,9 @@ at `.artifacts/visual-audit-2026-10-29/`.
   Seeds are authored and intentional, but their placement moved inward under B.
 
 Validation: `tests/cinematic.cjs` passed at both target viewports with no page
-errors or asset warnings. Story-module and Python server tests, JavaScript syntax
-checks, and `git diff --check` passed. Selected captures are in the ignored
+errors or asset warnings. It now checks hand/tape-to-hinge contact at the
+fastening beat. Story-module and Python server tests, JavaScript syntax checks,
+and `git diff --check` passed. Selected captures are in the ignored
 `.artifacts/visual-fix-20261029/`; independent full-film/silhouette review remains
 open.
 

@@ -21,9 +21,13 @@ For every technical change, use these skills in order:
 3. **Review:** use `code-review` for separate standards and spec reviews; resolve
    findings before finishing or report any that remain open.
 
-The primary agent owns design, implementation, tests and browser validation.
-The `code-review` skill may use read-only review subagents; they do not implement
-changes or own the task.
+The primary agent owns design, task integration, and final verification. Subagents
+may implement explicitly delegated, bounded changes, including source, asset, and
+test edits. Assign non-overlapping files or clearly separated hunks; each worker
+must report its edits, tests, and unresolved risks. The primary agent reviews and
+integrates all delegated work, runs the combined test suite, and owns browser
+validation. For `code-review`, review subagents remain read-only and do not fix
+findings.
 
 ## Modeling and animation
 
@@ -37,8 +41,9 @@ changes or own the task.
 - Keep model construction and reusable rig/animation logic in focused modules.
   Evaluate story animation deterministically so seeking and replay agree. Check
   contact, planted feet, transitions, and resource disposal for affected objects.
-- The primary agent owns source, asset, and editor changes for the task. Inspect
-  the baseline and preserve unrelated user edits before making changes.
+- Before editing, each owner inspects the baseline and preserves unrelated user
+  edits. The primary agent coordinates ownership of shared files and integrates
+  delegated source, asset, and editor changes.
 
 Preserve the local runtime stack. Model files belong in Git; browser captures
 and run reports do not.
@@ -56,13 +61,14 @@ and run reports do not.
 
 ## Resource ownership
 
-The primary agent handles implementation, validation, and browser review directly.
-Check host memory/CPU before heavy work. Use one QA browser at a time and freeze
-idle WebGL playback. The primary agent owns cleanup of temporary processes and
-browser sessions it starts, including after failures. Close them when no longer
-needed. Preserve unrelated processes, shared tool/MCP services, and the intentionally
-running preview server. Confirm ownership before stopping inherited processes;
-never blanket-kill Chromium or other process names.
+The primary agent owns final validation and browser review; implementation may be
+delegated under the ownership rules above. Check host memory/CPU before heavy work.
+Use one QA browser at a time and freeze idle WebGL playback. The primary agent owns
+cleanup of temporary processes and browser sessions it starts, including after
+failures. Close them when no longer needed. Preserve unrelated processes, shared
+tool/MCP services, and the intentionally running preview server. Confirm ownership
+before stopping inherited processes; never blanket-kill Chromium or other process
+names.
 
 Treat narrative details as undecided unless the user supplies an approved brief
 for the current task. Infrastructure work does not authorize story changes.

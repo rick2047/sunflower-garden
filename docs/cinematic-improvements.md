@@ -40,19 +40,19 @@ detour around Anshita's face. Story text, dialogue timing, actor identity, fixed
 geography, and total runtime are unchanged.
 
 `tests/cinematic.cjs` passed in Chromium at 1440×900 and 390×844, including the
-new loaded-rig, prop, shot-continuity, face/tip-frame, and contact checks. The
+new loaded-rig, prop, shot-continuity, face/tip-frame, contact, and tape-to-hinge
+fastening checks. The
 story-module tests, six Python server tests, JavaScript syntax checks, and
 `git diff --check` also passed; there were no loader warnings or page errors.
 Selected desktop/mobile captures are in the ignored
 `.artifacts/visual-fix-20261029/` directory. This is sampled evidence, not a
-continuous film review: leaf overlap still competes with faces in some measure and
-bloom frames, the storm slip/re-grip contacts remain crowded, the shared-joy hands
-remain crowded by foreground flowers, and the tape-to-stem fastening remains
-visually ambiguous in some angles, so the broader silhouette/contact review
-remains open. The runtime checks
-do verify tape-to-hand and hand-to-hinge attachment. Morning handoff hand-to-face
-clearance is sampled and asserted; its poses remain unchanged. Paresh's model
-candidates were not confirmed defects; no model geometry was changed.
+continuous film review: sampled measure faces/stalks, bloom hand clearance, storm
+slip/re-grip, and tape fastening were visually rechecked in both viewports, while
+continuous silhouette review remains open. The tape action now approaches the
+hinge and places the working hand and tape at the held joint. Morning handoff
+hand-to-face clearance is sampled and asserted; its poses remain unchanged.
+Paresh's model candidates were not confirmed defects; no model geometry was
+changed.
 
 ## Direct completion pass — 2026-10-28
 

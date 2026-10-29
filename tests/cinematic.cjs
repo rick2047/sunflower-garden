@@ -6,6 +6,7 @@ async page => {
   page.on('pageerror', onError);
   const assert = (ok, message) => { if (!ok) throw new Error(message); };
   try {
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.reload();
     await page.waitForFunction(() => window.__garden?.ready);
     const results = await page.evaluate(() => {
@@ -312,6 +313,23 @@ async page => {
       assert(tapeGroup.getWorldPosition(new g.THREE.Vector3())
         .distanceTo(handP) < 1.5,
       'Storm tape is detached from Paresh\'s working hand');
+
+      // The fastening beat places Paresh's working hand and tape on the held
+      // hinge after his deterministic approach, not merely in the same shot.
+      g.seek(6, tapeRunAt + 3);
+      stem = g.performance().contacts.stem;
+      brokenHinge = hingeAt(0, 'broken');
+      handP = finalContact(stem.pareshR, 'paresh', 'R', 'storm fastening hand');
+      tapeGroup.updateWorldMatrix(true, false);
+      assert(handP.distanceTo(brokenHinge) < 0.2,
+        'Storm fastening hand misses the held hinge');
+      assert(tapeGroup.getWorldPosition(new g.THREE.Vector3()).distanceTo(brokenHinge) < 0.8,
+        'Storm tape does not reach the held hinge');
+      g.seek(6, 24.49);
+      const beforeStormReturn = g.S.paresh.position.clone();
+      g.seek(6, 24.5);
+      assert(beforeStormReturn.distanceTo(g.S.paresh.position) < 0.1,
+        'Storm tape approach snaps on the return cut');
 
       g.seek(6, 27.5);
       stem = g.performance().contacts.stem;

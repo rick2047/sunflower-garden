@@ -156,10 +156,10 @@ function actorRootTargets(ch, storyT, result = _actorRootTargets) {
   const sow = ch === 1 ? sowingPlan(chapter, storyT) : null;
   const txP = act === 'sow' ? sow.pareshX : act === 'aftermath' ? -8 :
     act === 'storm' ? 4 : act === 'repair' ? -10 : actionShot ? -22 : act === 'distance' ? -24 :
-    act === 'measure' ? -3 : close ? -8 : ch === 9 ? -18 : joyful ? JOY_MARKS.paresh.startX : PA_BASE[0];
+    act === 'measure' ? -8 : close ? -8 : ch === 9 ? -18 : joyful ? JOY_MARKS.paresh.startX : PA_BASE[0];
   const txA = act === 'sow' ? sow.anshitaX : act === 'aftermath' ? 8 :
     act === 'storm' ? -11.5 : act === 'repair' ? 10 : actionShot ? 22 : act === 'distance' ? 24 :
-    act === 'measure' ? 3 : close ? 8 : ch === 9 ? 18 : joyful ? JOY_MARKS.anshita.startX : AN_BASE[0];
+    act === 'measure' ? 8 : close ? 8 : ch === 9 ? 18 : joyful ? JOY_MARKS.anshita.startX : AN_BASE[0];
   const tz = act === 'sow' ? SOW_ACTOR_Z : act === 'aftermath' ? 5 :
     act === 'storm' ? 5.4 : act === 'repair' ? 9.0 : actionShot ? (ch === 8 ? 9.0 : 5) : act === 'distance' ? 2 :
     act === 'measure' ? 12.5 : close ? 5 : ch === 9 ? 8 : joyful ? 6 : PA_BASE[2];
@@ -1150,6 +1150,17 @@ function applyState(ch, t) {
     const marks = actorRootTargets(ch, storyT, _actorRootTargets);
     S.paresh.position.copy(marks.paresh);
     S.anshita.position.copy(marks.anshita);
+    if (c.id === 'storm' && storyT >= STORY_CUES.storm.tapeRun
+        && storyT < STORM_RETURN_AT) {
+      // After collecting the tape, move into arm's reach of the broken hinge
+      // so the fastening reads as contact rather than a distant hand gesture.
+      const approach = smooth((storyT - STORY_CUES.storm.tapeRun) / 2);
+      const leave = smooth((storyT - (STORM_RETURN_AT - 2)) / 2);
+      const fasteningX = lerp(marks.paresh.x, -9.4, approach);
+      const fasteningZ = lerp(marks.paresh.z, -3, approach);
+      S.paresh.position.x = lerp(fasteningX, 0, leave);
+      S.paresh.position.z = lerp(fasteningZ, -9.2, leave);
+    }
     if (entryActive && entry.kind === 'cut' && c.id === 'morning-after'
         && storyT < SCENE_CAMERA_BLEND_SECONDS) {
       S.paresh.position.copy(entry.from.paresh);
@@ -1354,7 +1365,7 @@ function applyState(ch, t) {
       // The joined hold finishes in front of the pot foliage (toward camera) so
       // the stems and leaves cannot cover it from the shared-joy angle.
       const goal = _contactGoal.set(0, lerp(30.5, 19, joyApproach),
-        lerp(-1, 12, joyApproach));
+        lerp(-1, 16, joyApproach));
       const shared = sharedHandPoint(P, 'L', A, 'R', goal);
       S.performance.contacts.hands = {
         point: shared.toArray(),
@@ -1379,25 +1390,35 @@ function applyState(ch, t) {
         const slip = smooth((storyT - STORY_CUES.storm.slip) / 0.9)
           * (1 - smooth((storyT - STORY_CUES.storm.regrip) / 1.0));
         const leaving = smooth((storyT - STORY_CUES.storm.leaving) / 0.6);
-        // "It's slipping." Keep the arm reaching for the stem but visibly off
-        // the grip instead of dropping it to his side; "Don't let go." closes
-        // the hand again, and the tape cut releases it completely.
-        const pareshHold = holding * (1 - leaving) * (1 - 0.28 * slip);
+        // "It's slipping." Pull his hand clear of the hinge, then return it to
+        // the same contact point for "Don't let go." Keep his arm engaged so
+        // the action reads as a failed grip and re-grip, not a relaxed pose.
+        const pareshHold = holding * (1 - leaving);
         const aL = _stormL.copy(goal);
         aL.x += 0.06; aL.y += 0.14; aL.z += 0.06;
         const aR = _stormR.copy(goal);
         aR.x -= 0.06; aR.y -= 0.14; aR.z += 0.06;
+        const pareshTarget = _stormR.copy(aR);
+        pareshTarget.x -= 2.6 * slip;
+        pareshTarget.y += 4.8 * slip;
         S.performance.contacts.stem = {
           hinge: near.toArray(),
           target: goal.toArray(),
-          handTargets: { anshitaL: aL.toArray(), pareshR: aR.toArray() },
+          handTargets: { anshitaL: aL.toArray(), pareshR: pareshTarget.toArray() },
           anshitaL: A.aim('L', aL, holding),
-          pareshR: P.aim('R', aR, pareshHold),
+          pareshR: P.aim('R', pareshTarget, pareshHold),
         };
         if (storyT >= STORY_CUES.storm.tapeRun && storyT < STORM_RETURN_AT) {
-          // Carry the tape at chest height, clear of the foreground flowers.
-          // Preserve the stem target in the diagnostics: this is a release.
-          P.aim('R', _headWorkTarget.set(8, 23, 15), 1);
+          // Move the tape hand from the carry pose to the held hinge over the
+          // same deterministic approach, then release it back to the carry pose
+          // as he steps away on the return cut.
+          const approach = smooth((storyT - STORY_CUES.storm.tapeRun) / 2);
+          const leave = smooth((storyT - (STORM_RETURN_AT - 2)) / 2);
+          _headWorkTarget.set(lerp(lerp(8, near.x, approach), 8, leave),
+            lerp(lerp(23, near.y, approach), 23, leave),
+            lerp(lerp(15, near.z, approach), 15, leave));
+          S.performance.contacts.stem.handTargets.pareshR = _headWorkTarget.toArray();
+          S.performance.contacts.stem.pareshR = P.aim('R', _headWorkTarget, 1);
         }
         const returnHold = smooth((storyT - STORY_CUES.storm.returnHold) / 0.9);
         if (returnHold > 0) {
@@ -1467,8 +1488,10 @@ function applyState(ch, t) {
         || (act === 'aftermath' && storyT >= 29)) {
       const group = S.variants.tape?.[0]?.group;
       if (group) {
+        const fastening = act === 'storm' && storyT >= STORY_CUES.storm.tapeRun;
         P.attach(S.careProps, group, 'R',
-          { offset: [0, 0.8, 0.4], rotation: [0.2, 0, 0.3], scale: 0.8 });
+          { offset: fastening ? [0, 0.25, 0.15] : [0, 0.8, 0.4],
+            rotation: [0.2, 0, 0.3], scale: 0.8 });
       }
     }
     if (act === 'storm' && storyT >= STORY_CUES.storm.support && S.variants.support?.[0]) {
