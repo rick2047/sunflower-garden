@@ -24,13 +24,16 @@ at `.artifacts/visual-audit-2026-10-29/`.
 
 - **A — tape-run:** `film-direction.js` now uses a closer insert centered on the
   tape hand and held hinge. Runtime assertions and rendered captures passed at
-  1440×900 and 390×844; the shot blend and actor/set positions are unchanged.
+  1440×900 and 390×844; runtime checks confirm the tape-to-hand and hand-to-hinge
+  attachments. The rendered tape-to-stem fastening remains ambiguous in some
+  angles, so image acceptance is still partial. The shot blend and actor/set
+  positions are unchanged.
 - **B — contacts/readability:** sowing hands and placed seeds moved inward together
   (`SOW_SOIL_Z = -0.2`); the shared-repair view is less overhead; the shared-joy
   move begins at 16.2 s and is settled at the 17.1 s hand contact; one bee has a
   small deterministic lateral detour around Anshita's face. Morning handoff poses
-  were sampled and left unchanged. This is not a complete review of every listed
-  action frame.
+  were sampled, passed hand-to-face clearance assertions at the cited times, and
+  were left unchanged. This is not a complete review of every listed action frame.
 - **C — measure:** the end of seven-am now pre-rolls into the measure camera pose.
   Projected stalk-tip bounds pass at 0.08, 14.58, and 29.58 s in both viewports.
   Foliage still overlaps some face silhouettes, so the broader reveal review is

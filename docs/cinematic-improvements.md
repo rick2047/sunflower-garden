@@ -46,8 +46,11 @@ story-module tests, six Python server tests, JavaScript syntax checks, and
 Selected desktop/mobile captures are in the ignored
 `.artifacts/visual-fix-20261029/` directory. This is sampled evidence, not a
 continuous film review: leaf overlap still competes with faces in some measure and
-bloom frames, so the broader silhouette/contact review remains open. Paresh's
-model candidates were not confirmed defects; no model geometry was changed.
+bloom frames, and the tape-to-stem fastening remains visually ambiguous in some
+angles, so the broader silhouette/contact review remains open. The runtime checks
+do verify tape-to-hand and hand-to-hinge attachment. Morning handoff hand-to-face
+clearance is sampled and asserted; its poses remain unchanged. Paresh's model
+candidates were not confirmed defects; no model geometry was changed.
 
 ## Direct completion pass — 2026-10-28
 

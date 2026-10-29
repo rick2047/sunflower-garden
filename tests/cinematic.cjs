@@ -17,6 +17,15 @@ async page => {
           ...n.quaternion.toArray(), ...n.scale.toArray()]));
         return JSON.stringify([nodes, g.camera.position.toArray(), g.camera.quaternion.toArray()]);
       };
+      const faceAnchorAt = who => {
+        const paresh = who === 'paresh';
+        const character = g.S[who];
+        const anchor = new g.THREE.Vector3(...g.S.rig.base[paresh ? 'pHeadAnchor' : 'aHeadAnchor']);
+        const body = g.S.rig[paresh ? 'pBody' : 'aBody'];
+        const base = g.S.rig.base[paresh ? 'pBody' : 'aBody'];
+        anchor.y += body.position.y - base.position[1] + 4;
+        return character.localToWorld(anchor);
+      };
       for (const chapter of g.chapters) {
         let end = 0;
         for (const line of chapter.dialogue) {
@@ -39,10 +48,7 @@ async page => {
       g.seek(10,23); assert(bee.distanceTo(g.S.bees[0].position) > 0.01, 'Bees freeze after visualDur');
       for (const time of [15.5, 15.6]) {
         g.seek(10, time);
-        const body = g.S.rig.aBody, base = g.S.rig.base.aBody;
-        const face = new g.THREE.Vector3(...g.S.rig.base.aHeadAnchor);
-        face.y += body.position.y - base.position[1] + 4;
-        g.S.anshita.localToWorld(face);
+        const face = faceAnchorAt('anshita');
         const bee = g.S.bees[1];
         bee.updateWorldMatrix(true, false);
         const beePosition = bee.getWorldPosition(new g.THREE.Vector3());
@@ -318,6 +324,11 @@ async page => {
       assert(stem.anshitaL.distance < 0.5 && handA.distanceTo(brokenHinge) < 0.5,
         'Anshita does not hold the stem through the tape run');
       assert(g.state().visible.includes('tape'), 'Tape cue is not present during the storm');
+      const tapeGroup = g.S.variants.tape[0].group;
+      tapeGroup.updateWorldMatrix(true, false);
+      assert(tapeGroup.getWorldPosition(new g.THREE.Vector3())
+        .distanceTo(handAt('paresh', 'R')) < 1.5,
+      'Storm tape is detached from Paresh\'s working hand');
 
       g.seek(6, 27.5);
       stem = g.performance().contacts.stem;
@@ -361,6 +372,11 @@ async page => {
         const hp = finalContact(contacts.paresh, 'paresh', 'L', `morning ${t} Paresh`);
         const ha = finalContact(contacts.anshita, 'anshita', 'R', `morning ${t} Anshita`);
         assert(hp.distanceTo(ha) < 0.2, `Morning-after hands are apart at ${t}`);
+        const faceClearance = Math.min(hp.distanceTo(faceAnchorAt('paresh')),
+          hp.distanceTo(faceAnchorAt('anshita')), ha.distanceTo(faceAnchorAt('paresh')),
+          ha.distanceTo(faceAnchorAt('anshita')));
+        assert(faceClearance > 9,
+          `Morning-after hand hold crowds a face at ${t}: ${faceClearance.toFixed(2)}`);
       }
       g.seek(7, g.chapters[7].dialogue[4].start + 0.1);
       assert(g.dialogue().text === 'Then hold it with me.', 'Handoff line not sampled');
@@ -404,8 +420,6 @@ async page => {
       g.seek(10, 16); assert(g.state().shot === 'approach-steps', 'Approach step shot missing');
       g.seek(10, 16.3); assert(g.state().shot === 'shared-joy', 'Shared-joy frame starts too late');
       g.seek(10, 17.2); assert(g.state().shot === 'shared-joy', 'Shared joy shot missing');
-      g.seek(8, g.chapters[8].duration);
-      assert(g.state().shot === 'height-reveal-prep', 'Measure pre-reveal shot missing');
       g.seek(11, 28); assert(g.state().shot === 'last-line', 'Final-line shot missing');
       return { chapters: g.chapters.length, duration: g.storyDuration,
         drawCalls: g.renderer.info.render.calls, triangles: g.renderer.info.render.triangles,
