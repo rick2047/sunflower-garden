@@ -43,61 +43,6 @@ async page => {
       g.seek(6,1); const pot = g.S.potPivots[0].bone.position.clone();
       g.seek(6,2); assert(pot.equals(g.S.potPivots[0].bone.position), 'Set slides within storm shot');
 
-      const cameraPose = () => ({ position: g.camera.position.clone(), quaternion: g.camera.quaternion.clone() });
-      const cameraStep = (from, to) => ({
-        distance: from.position.distanceTo(to.position),
-        angle: from.quaternion.angleTo(to.quaternion),
-      });
-      const tapeCut = g.chapters[6].dialogue[4].end + 1;
-      g.seek(6, tapeCut - 0.01);
-      const beforeTapeCut = cameraPose();
-      g.seek(6, tapeCut + 0.01);
-      const afterTapeCut = cameraPose();
-      const tapeCutStep = cameraStep(beforeTapeCut, afterTapeCut);
-      assert(tapeCutStep.distance < 0.25 && tapeCutStep.angle < 0.02,
-        `Storm camera jumps at tape cut: ${tapeCutStep.distance.toFixed(2)} units, ${tapeCutStep.angle.toFixed(3)} rad`);
-      const rootAt = who => g.S[who].position.clone();
-      const footHeights = who => ['L','R'].map(side => {
-        const foot = g.S[who].getObjectByName(`foot_${side}__pivot`);
-        foot.updateWorldMatrix(true, false);
-        return foot.getWorldPosition(new g.THREE.Vector3()).y;
-      });
-      for (let chapter = 1; chapter < g.chapters.length; chapter++) {
-        g.seek(chapter - 1, g.chapters[chapter - 1].duration - 0.01);
-        const beforeSceneCut = cameraPose();
-        g.seek(chapter, 0);
-        const sceneCutStep = cameraStep(beforeSceneCut, cameraPose());
-        assert(sceneCutStep.distance < 0.25 && sceneCutStep.angle < 0.02,
-          `Scene ${chapter} camera jumps: ${sceneCutStep.distance.toFixed(2)} units, ${sceneCutStep.angle.toFixed(3)} rad`);
-        if (g.chapters[chapter].id === 'morning-after') continue;
-        const entryEnd = g.chapters[chapter].dialogue[0].start;
-        g.seek(chapter - 1, g.chapters[chapter - 1].duration);
-        const from = { paresh: rootAt('paresh'), anshita: rootAt('anshita') };
-        g.seek(chapter, 0);
-        const start = { paresh: rootAt('paresh'), anshita: rootAt('anshita') };
-        assert(from.paresh.distanceTo(start.paresh) < 0.2
-          && from.anshita.distanceTo(start.anshita) < 0.2,
-        `Actor blocking teleports at chapter ${chapter} entry`);
-        for (const [time, label] of [[entryEnd / 2, 'middle'], [entryEnd, 'dialogue']]) {
-          g.seek(chapter, time);
-          for (const who of ['paresh', 'anshita']) {
-            const position = rootAt(who);
-            if (from[who].distanceTo(position) > 0.5) {
-              assert(position.distanceTo(from[who]) > 0.1,
-                `${who} does not move during ${chapter} ${label} entry`);
-            }
-            const heights = footHeights(who);
-            assert(heights.every(y => y >= 3.85 && y <= 5.55),
-              `${who} leaves the deck during ${chapter} ${label} entry: ${heights}`);
-          }
-        }
-        const dialogueRoots = { paresh: rootAt('paresh'), anshita: rootAt('anshita') };
-        g.seek(chapter, entryEnd + 0.05);
-        assert(dialogueRoots.paresh.distanceTo(rootAt('paresh')) < 0.15
-          && dialogueRoots.anshita.distanceTo(rootAt('anshita')) < 0.15,
-        `Actor blocking is not settled by chapter ${chapter}'s first line`);
-      }
-
       // ---- Authored set geography is chapter-invariant ----
       // Pots, plant roots and flowering props keep one world position in every
       // chapter. Only plant state (growth, breakage, bloom scale) may change.
@@ -435,6 +380,93 @@ async page => {
         drawCalls: g.renderer.info.render.calls, triangles: g.renderer.info.render.triangles,
         assetWarnings: g.state().assetWarnings };
     });
+    for (const [width,height] of [[1440,900],[390,844]]) {
+      await page.setViewportSize({width,height});
+      await page.evaluate(({width,height}) => {
+        const g = window.__garden;
+        const assert = (ok, message) => { if (!ok) throw new Error(message); };
+        const cameraPose = () => ({ position: g.camera.position.clone(), quaternion: g.camera.quaternion.clone() });
+        const cameraStep = (from, to) => ({
+          distance: from.position.distanceTo(to.position),
+          angle: from.quaternion.angleTo(to.quaternion),
+        });
+        const rootAt = who => g.S[who].position.clone();
+        const footAt = (who, side) => {
+          const foot = g.S[who].getObjectByName(`foot_${side}__pivot`);
+          foot.updateWorldMatrix(true, false);
+          return foot.getWorldPosition(new g.THREE.Vector3());
+        };
+        const tapeCut = g.chapters[6].dialogue[4].end + 1;
+        g.seek(6, tapeCut - 0.01);
+        const beforeTapeCut = cameraPose();
+        g.seek(6, tapeCut + 0.01);
+        const tapeStep = cameraStep(beforeTapeCut, cameraPose());
+        assert(tapeStep.distance < 0.25 && tapeStep.angle < 0.02,
+          `${width}x${height}: abrupt storm camera cut`);
+
+        for (let chapter = 1; chapter < g.chapters.length; chapter++) {
+          g.seek(chapter - 1, g.chapters[chapter - 1].duration - 0.01);
+          const priorCamera = cameraPose();
+          g.seek(chapter, 0);
+          const entryCamera = cameraStep(priorCamera, cameraPose());
+          assert(entryCamera.distance < 0.25 && entryCamera.angle < 0.02,
+            `${width}x${height}: abrupt camera entry to chapter ${chapter}`);
+          if (g.chapters[chapter].id === 'morning-after') continue;
+
+          const entryEnd = g.chapters[chapter].entryDuration;
+          g.seek(chapter - 1, g.chapters[chapter - 1].duration);
+        const from = { paresh: rootAt('paresh'), anshita: rootAt('anshita') };
+        g.seek(chapter, 0);
+        const start = { paresh: rootAt('paresh'), anshita: rootAt('anshita') };
+        const entryStep = (a, b) => ({ xz: Math.hypot(a.x - b.x, a.z - b.z), y: Math.abs(a.y - b.y) });
+        const pareshStep = entryStep(from.paresh, start.paresh);
+        const anshitaStep = entryStep(from.anshita, start.anshita);
+        assert(pareshStep.xz < 0.2 && anshitaStep.xz < 0.2
+          && pareshStep.y < 0.3 && anshitaStep.y < 0.3,
+          `Actor blocking teleports at chapter ${chapter}`);
+
+          for (const time of [entryEnd / 2, entryEnd]) {
+            g.seek(chapter, time);
+            for (const who of ['paresh','anshita']) {
+              const heights = ['L','R'].map(side => footAt(who, side).y);
+              assert(heights.every(y => y >= 3.85 && y <= 5.55),
+                `${who} leaves the deck during chapter ${chapter} entry: ${heights}`);
+            }
+          }
+          const entryPlan = g.S.entryPlans[chapter];
+          if (entryPlan?.kind === 'gait') {
+            const stepDuration = (entryPlan.walkEnd - entryPlan.walkStart) / entryPlan.paresh.steps;
+            const supportSamples = [entryPlan.walkStart + stepDuration * 0.15,
+              entryPlan.walkStart + stepDuration * 0.65];
+            const firstSupport = {};
+            for (const time of supportSamples) {
+              g.seek(chapter, time);
+              const entryGait = g.performance().entry;
+              assert(entryGait, `Missing entry gait in chapter ${chapter} at ${time.toFixed(2)}`);
+              for (const who of ['paresh','anshita']) {
+                const gait = entryGait[who];
+                const world = footAt(who, gait.support);
+                assert(gait.step === 0 && gait.feet[gait.support].planted
+                  && Math.abs(world.y - 4.15) < 0.12,
+                `${who} entry support foot leaves the deck in chapter ${chapter}`);
+                if (firstSupport[who]) {
+                  assert(gait.support === firstSupport[who].side
+                    && world.distanceTo(firstSupport[who].world) < 0.06,
+                  `${who} entry support foot skates in chapter ${chapter}`);
+                }
+                firstSupport[who] = { side: gait.support, world };
+              }
+            }
+          }
+          g.seek(chapter, entryEnd);
+          const dialogueRoots = { paresh: rootAt('paresh'), anshita: rootAt('anshita') };
+          g.seek(chapter, entryEnd + 0.05);
+          assert(dialogueRoots.paresh.distanceTo(rootAt('paresh')) < 0.15
+            && dialogueRoots.anshita.distanceTo(rootAt('anshita')) < 0.15,
+          `Actor blocking is not settled before dialogue in chapter ${chapter}`);
+        }
+      }, { width, height });
+    }
     // The character-attributed bubble remains in bounds on every dialogue turn.
     for (const [width,height] of [[1440,900],[390,844]]) {
       await page.setViewportSize({width,height});

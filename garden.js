@@ -201,6 +201,26 @@ function actorKneelAt(ch, storyT) {
   return { paresh: 0, anshita: 0, settle: 0 };
 }
 
+function actorFacing(ch) {
+  const act = CH[ch].action;
+  const close = ['sow','repair','tend','sit_together','aftermath','ending'].includes(act);
+  const joyful = act === 'joy';
+  return {
+    paresh: act === 'measure' ? Math.PI / 2 : act === 'sow' ? Math.PI - 0.1
+      : close ? Math.PI + 0.3 : Math.PI + (joyful ? 0.4 : 0.15),
+    anshita: act === 'measure' ? -Math.PI / 2 : act === 'sow' ? Math.PI + 0.1
+      : close ? Math.PI - 0.3 : Math.PI - (joyful ? 0.4 : 0.15),
+  };
+}
+
+function planEntryGait(performer, from, to, startTime, endTime, steps, yaw) {
+  return performer.planGait({
+    start: { x: from.x, z: from.z },
+    end: { x: to.x, z: to.z },
+    startTime, endTime, steps, lift: 0.9, yaw, groundY: DECK_TOP,
+  });
+}
+
 function buildEntryPlans() {
   const plans = Array(CH.length).fill(null);
   const from = { paresh: new THREE.Vector3(), anshita: new THREE.Vector3() };
@@ -211,32 +231,29 @@ function buildEntryPlans() {
     const duration = CH[ch].entryDuration;
     const previousPose = actorKneelAt(ch - 1, CH[ch - 1].dur);
     const nextPose = actorKneelAt(ch, 0);
+    const previousFacing = actorFacing(ch - 1);
+    const nextFacing = actorFacing(ch);
     const distance = Math.max(
       Math.hypot(to.paresh.x - from.paresh.x, to.paresh.z - from.paresh.z),
       Math.hypot(to.anshita.x - from.anshita.x, to.anshita.z - from.anshita.z));
     const recoveringFromKneel = Math.max(previousPose.paresh, previousPose.anshita) > 0.05;
     const kind = CH[ch].id === 'morning-after' ? 'cut'
-      : recoveringFromKneel || distance < 1.5 ? 'ease' : 'gait';
-    const poseDuration = ['sow','measure'].includes(CH[ch].action) ? 0.65 : 0.15;
+      : recoveringFromKneel || distance < 0.15 ? 'ease' : 'gait';
+    const poseDuration = 0.65;
     const walkStart = 0;
     const walkEnd = Math.max(walkStart + 0.1, duration - poseDuration);
     const steps = Math.max(2, Math.min(8, Math.ceil(distance / 6)));
     const plan = { duration, walkStart, walkEnd, kind,
       from: { paresh: from.paresh.clone(), anshita: from.anshita.clone() },
       to: { paresh: to.paresh.clone(), anshita: to.anshita.clone() },
-      fromPose: previousPose, toPose: nextPose, paresh: null, anshita: null,
+      fromPose: previousPose, toPose: nextPose,
+      fromFacing: previousFacing, toFacing: nextFacing, paresh: null, anshita: null,
       pareshWalkEndY: to.paresh.y, anshitaWalkEndY: to.anshita.y };
     if (plan.kind === 'gait' && walkEnd > walkStart) {
-      plan.paresh = S.performers.paresh.planGait({
-        start: { x: from.paresh.x, z: from.paresh.z },
-        end: { x: to.paresh.x, z: to.paresh.z },
-        startTime: walkStart, endTime: walkEnd, steps, lift: 0.9, groundY: DECK_TOP,
-      });
-      plan.anshita = S.performers.anshita.planGait({
-        start: { x: from.anshita.x, z: from.anshita.z },
-        end: { x: to.anshita.x, z: to.anshita.z },
-        startTime: walkStart, endTime: walkEnd, steps, lift: 0.9, groundY: DECK_TOP,
-      });
+      plan.paresh = planEntryGait(S.performers.paresh, from.paresh, to.paresh,
+        walkStart, walkEnd, steps, previousFacing.paresh);
+      plan.anshita = planEntryGait(S.performers.anshita, from.anshita, to.anshita,
+        walkStart, walkEnd, steps, previousFacing.anshita);
       plan.pareshWalkEndY = sampleGait(plan.paresh, walkEnd).rootY;
       plan.anshitaWalkEndY = sampleGait(plan.anshita, walkEnd).rootY;
     }
@@ -1145,13 +1162,16 @@ function applyState(ch, t) {
     const et = entryProgress;
     const bob = 0; // Root height stays grounded; breathing belongs to the torso.
     const pose = poseFor(act, t);
-    // Scene 10 pins the authored backs together along one axis: each actor
-    // faces outward, so the pair reads as opposing back-to-back torsos while
-    // the authored head bones turn far enough for both faces to stay readable.
-    const faceP = act === 'measure' ? Math.PI / 2 : act === 'sow' ? Math.PI - 0.1 : close ? Math.PI + 0.3 : Math.PI + (joyful ? 0.4 : 0.15);
-    const faceA = act === 'measure' ? -Math.PI / 2 : act === 'sow' ? Math.PI + 0.1 : close ? Math.PI - 0.3 : Math.PI - (joyful ? 0.4 : 0.15);
-    S.paresh.rotation.y = lerp(Math.PI + 0.25, faceP, et);
-    S.anshita.rotation.y = lerp(Math.PI - 0.25, faceA, et);
+    const facing = actorFacing(ch);
+    const facingProgress = entryActive && entry.kind === 'gait'
+      ? smooth((storyT - entry.walkEnd) / Math.max(0.01, entry.duration - entry.walkEnd))
+      : entryProgress;
+    S.paresh.rotation.y = entryActive
+      ? lerp(entry.fromFacing.paresh, facing.paresh, facingProgress)
+      : facing.paresh;
+    S.anshita.rotation.y = entryActive
+      ? lerp(entry.fromFacing.anshita, facing.anshita, facingProgress)
+      : facing.anshita;
 
     // Scene 11: four real side-steps each, planted in world space, ending in the
     // shared posing mark. The gait sets root X/Y/Z from story time.

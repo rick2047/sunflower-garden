@@ -6,17 +6,17 @@ Camera changes now use absolute story-time blends (0.9 seconds for normal cuts,
 0.35 seconds for urgent storm cuts); scene-entry framing and lighting blend over
 the opening. Actors walk to most authored entry marks with the grounded gait over
 2–3.5 seconds, then reach the first line at the end of that active move. The
-morning-after empty-doorway insert retains its concealed blocking. Reduced-motion
-mode keeps camera and actor transitions instantaneous. The final end-card hold
-remains 4.8 seconds; total runtime is now 322.86 seconds (5:22.86), with dialogue
-text, action codas and contacts preserved.
+morning-after empty-doorway insert retains its concealed reblocking cut.
+Reduced-motion mode keeps camera and actor transitions instantaneous. The final
+end-card hold remains 4.8 seconds; total runtime is now 322.86 seconds (5:22.86),
+with dialogue text, action codas and contacts preserved.
 
 Each spoken bubble also shows a separate emoji reaction anchored near the
 non-speaking character. `tests/cinematic.cjs` checks every dialogue turn,
 attribution, proximity, viewport bounds at 1440×900 and 390×844, and hiding during
-quiet beats. It also checks camera continuity/replay determinism and actor entry
-root movement, deck height, and arrival before dialogue. This is not a substitute
-for subjective review of the full film.
+quiet beats. At both viewports, it also checks camera continuity/replay
+determinism and actor entry movement, deck height, planted-support samples and
+arrival before dialogue. This is not a substitute for subjective full-film review.
 
 ## Direct completion pass — 2026-10-28
 
@@ -64,7 +64,8 @@ is no longer blocked on Blockbench.
 - [x] Remove the embrace root-position snap and blend its arm target.
 - [x] Transition actors into scene blocking with grounded, deterministic movement.
   `tests/cinematic.cjs` verifies entry positions progress from the prior scene,
-  remain deck-grounded, and settle at the authored marks before dialogue.
+  remain deck-grounded, hold sampled support feet, and settle at authored marks
+  before dialogue. The concealed morning-after doorway cut is the exception.
 - [x] Keep character roots grounded; layer subtle breathing on the torso.
 - [x] Make late aftermath tape cues reachable and preserve the broken state.
 - [x] Use elapsed playback time instead of slowing the film at low frame rates.
@@ -144,7 +145,7 @@ is no longer blocked on Blockbench.
   26.5 s; other cues remain fixed.)*
 - [ ] Review the full 322.86-second running time for unearned pauses/repetition.
 - [x] Remove unmotivated scene-edge pauses while preserving intentional action.
-  Scene entrances contain active actor movement (2–3.5 s by scene); non-final
+  Most scene entrances contain active actor movement (2–3.5 s by scene); non-final
   cuts follow the last meaningful line or authored action coda by 1.5 s. The
   final end-card hold remains 4.8 s. Pure schedule and desktop/mobile browser
   regressions pass.
