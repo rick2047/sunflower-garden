@@ -18,6 +18,15 @@ quiet beats. At both viewports, it also checks camera continuity/replay
 determinism and actor entry movement, deck height, planted-support samples and
 arrival before dialogue. This is not a substitute for subjective full-film review.
 
+## Visual review follow-up — 2026-10-29
+
+A read-only visual audit sampled the full 322.86-second story at regular story-time
+intervals, plus chapter-entry and action frames. Six reports cover the garden,
+storm, repair/height reveal, bloom/ending, and both character models. Findings are
+review candidates only; no implementation or checklist state changed. See the
+[visual audit index](visual-audit-2026-10-29/README.md) for reports and frame
+references.
+
 ## Direct completion pass — 2026-10-28
 
 The user authorized direct implementation after the delegated visibility review
