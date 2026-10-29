@@ -330,10 +330,10 @@ async page => {
         const ha = finalContact(contacts.anshita, 'anshita', 'R', `morning ${t} Anshita`);
         assert(hp.distanceTo(ha) < 0.2, `Morning-after hands are apart at ${t}`);
       }
-      g.seek(7, 23.8);
+      g.seek(7, g.chapters[7].dialogue[4].start + 0.1);
       assert(g.dialogue().text === 'Then hold it with me.', 'Handoff line not sampled');
-      assert(g.state().shot === 'the-handoff', 'Handoff shot not active at 23.8 s');
-      g.seek(7, 29);
+      assert(g.state().shot === 'the-handoff', 'Handoff shot not active during its dialogue');
+      g.seek(7, (g.chapters[7].dialogue[5].start + g.chapters[7].dialogue[5].end) / 2);
       assert(g.dialogue().text === "I'm here.", 'Reply line not sampled');
 
       for (const t of [17, 17.1]) {
@@ -353,7 +353,7 @@ async page => {
       g.seek(6, 18.5); assert(g.state().shot === 'tape-run', 'Tape-run shot missing');
       g.seek(6, 24.6); assert(g.state().shot === 'return-to-her', 'Return shot missing');
       g.seek(8, 8); assert(g.state().shot === 'shared-repair', 'Repair insert missing');
-      g.seek(7, 1.5);
+      g.seek(7, 0.5);
       assert(g.state().shot === 'empty-doorway', 'Empty-doorway insert missing');
       {
         const forward = g.camera.getWorldDirection(new g.THREE.Vector3());
@@ -365,7 +365,7 @@ async page => {
         assert(Math.abs(door.x) < 1 && Math.abs(door.y) < 1 && door.z < 1,
           'Empty-doorway insert does not frame the open doorway');
       }
-      g.seek(7, 3.05); assert(g.state().shot === 'care-two-shot',
+      g.seek(7, 1.5); assert(g.state().shot === 'care-two-shot',
         'Empty-doorway insert overruns the quiet beat');
       g.seek(10, 16); assert(g.state().shot === 'approach-steps', 'Approach step shot missing');
       g.seek(10, 17.2); assert(g.state().shot === 'shared-joy', 'Shared joy shot missing');
@@ -380,6 +380,20 @@ async page => {
       const { bubbles, expectedCount } = await page.evaluate(() => {
         const g = window.__garden;
         const bubble = document.getElementById('speech-bubble');
+        const reactionBadge = document.getElementById('listener-reaction');
+        const projectHead = (name) => {
+          const isParesh = name === 'Paresh';
+          const character = isParesh ? g.S.paresh : g.S.anshita;
+          const anchor = g.S.rig.base[isParesh ? 'pHeadAnchor' : 'aHeadAnchor'];
+          const body = g.S.rig[isParesh ? 'pBody' : 'aBody'];
+          const bodyBase = g.S.rig.base[isParesh ? 'pBody' : 'aBody'];
+          const point = new g.THREE.Vector3(...anchor);
+          point.y += body.position.y - bodyBase.position[1] + 4;
+          character.localToWorld(point);
+          point.project(g.camera);
+          return { x: (point.x * 0.5 + 0.5) * innerWidth,
+            y: (-point.y * 0.5 + 0.5) * innerHeight };
+        };
         const results = [];
         let expectedCount = 0;
         for (let chapter = 0; chapter < g.chapters.length; chapter++) {
@@ -391,6 +405,8 @@ async page => {
             g.seek(chapter, time);
             const state = g.state();
             const rect = bubble.getBoundingClientRect();
+            const reactionRect = reactionBadge?.getBoundingClientRect();
+            const listenerHead = projectHead(line.listener);
             const first = state.bubbleLayout && { left: state.bubbleLayout.left,
               top: state.bubbleLayout.top, width: state.bubbleLayout.width,
               height: state.bubbleLayout.height, speaker: state.bubbleLayout.speaker,
@@ -410,6 +426,11 @@ async page => {
               tailOffset: parseFloat(getComputedStyle(bubble).getPropertyValue('--bubble-tail-offset')),
               speakerText: document.getElementById('bubble-speaker').textContent,
               text: document.getElementById('bubble-text').textContent,
+              reaction: reactionBadge && { visible: reactionBadge.classList.contains('visible'),
+                text: reactionBadge.textContent, listener: reactionBadge.dataset.listener,
+                rect: { left: reactionRect.left, top: reactionRect.top,
+                  right: reactionRect.right, bottom: reactionRect.bottom,
+                  width: reactionRect.width, height: reactionRect.height }, listenerHead },
               announcement: document.getElementById('announcement').textContent });
           }
         }
@@ -424,6 +445,18 @@ async page => {
         assert(sample.text === dialogue.text, `Speech bubble text mismatch in chapter ${sample.chapter}`);
         assert(sample.announcement === `${dialogue.speaker}: ${dialogue.text}`,
           `Accessible dialogue announcement missing in chapter ${sample.chapter}`);
+        assert(sample.reaction?.visible, `Listener reaction hidden in chapter ${sample.chapter}`);
+        assert(sample.reaction.text === dialogue.reaction,
+          `Listener reaction emoji mismatch in chapter ${sample.chapter}`);
+        assert(sample.reaction.listener === dialogue.listener,
+          `Listener reaction attributed to wrong character in chapter ${sample.chapter}`);
+        const reaction = sample.reaction.rect;
+        assert(reaction.left >= 0 && reaction.right <= width
+          && reaction.top >= 0 && reaction.bottom <= height,
+        `Listener reaction overflows ${width}x${height} in chapter ${sample.chapter}`);
+        assert(Math.hypot((reaction.left + reaction.width / 2) - sample.reaction.listenerHead.x,
+          (reaction.top + reaction.height / 2) - sample.reaction.listenerHead.y) < 100,
+        `Listener reaction is detached from the character in chapter ${sample.chapter}`);
         assert(first?.speaker === dialogue.speaker, `Missing projected bubble layout in chapter ${sample.chapter}`);
         assert(Math.abs(rect.left - first.left) < 1 && Math.abs(rect.top - first.top) < 1,
           `Bubble DOM position differs from its layout in chapter ${sample.chapter}`);
@@ -443,9 +476,20 @@ async page => {
       }
       assert(await page.locator('#subtitles').count() === 0,
         'Legacy fixed subtitle panel remains in the playback presentation');
+      const opening = await page.evaluate(() => {
+        const g = window.__garden;
+        g.seek(0, g.chapters[0].dialogue[0].start);
+        return { card: g.state().filmCard,
+          bubble: document.getElementById('speech-bubble').classList.contains('visible'),
+          reaction: document.getElementById('listener-reaction').classList.contains('visible') };
+      });
+      assert(opening.card === null && opening.bubble && opening.reaction,
+        'Opening title still covers the first dialogue/reaction');
       await page.evaluate(() => window.__garden.seek(0, 1));
       assert(!(await page.locator('#speech-bubble').evaluate(el => el.classList.contains('visible'))),
         'Speech bubble remains visible during a quiet beat');
+      assert(!(await page.locator('#listener-reaction').evaluate(el => el.classList.contains('visible'))),
+        'Listener reaction remains visible during a quiet beat');
     }
     // Every required action contact must stay inside both viewports. This is a
     // framing check only; it is not image evidence that the contact is visible.

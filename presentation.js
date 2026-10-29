@@ -12,18 +12,25 @@ export function createSpeechBubble(document = globalThis.document) {
   const bubble = byId(document, 'speech-bubble');
   const speaker = byId(document, 'bubble-speaker');
   const text = byId(document, 'bubble-text');
+  const reaction = byId(document, 'listener-reaction');
   const announcement = byId(document, 'announcement');
   let previousChapter = -1, previousIndex = -2, previousText = '', previousReaction = null;
+  let previousListener = '';
 
   function update(dialogue) {
     if (dialogue.chapter === previousChapter && dialogue.index === previousIndex
-        && dialogue.text === previousText && dialogue.reaction === previousReaction) return false;
+        && dialogue.text === previousText && dialogue.reaction === previousReaction
+        && dialogue.listener === previousListener) return false;
     previousChapter = dialogue.chapter;
     previousIndex = dialogue.index;
     previousText = dialogue.text;
     previousReaction = dialogue.reaction;
+    previousListener = dialogue.listener || '';
     speaker.textContent = dialogue.speaker || '';
     text.textContent = dialogue.text;
+    reaction.textContent = dialogue.phase === 'line' ? dialogue.reaction || '' : '';
+    reaction.dataset.listener = dialogue.phase === 'line' ? dialogue.listener || '' : '';
+    reaction.classList.toggle('visible', dialogue.phase === 'line' && Boolean(dialogue.reaction));
     bubble.dataset.speaker = dialogue.speaker || '';
     bubble.classList.toggle('visible', dialogue.phase === 'line');
     announcement.textContent = dialogue.phase === 'line' ? `${dialogue.speaker}: ${dialogue.text}` : '';
@@ -37,6 +44,7 @@ export function createSpeechBubble(document = globalThis.document) {
       bubble.style.top = '';
       bubble.style.removeProperty('--bubble-tail-offset');
       bubble.dataset.placement = '';
+      positionReaction(null);
       return;
     }
     bubble.style.left = `${layout.left}px`;
@@ -46,6 +54,20 @@ export function createSpeechBubble(document = globalThis.document) {
     bubble.classList.add('visible');
   }
 
+  function positionReaction(layout) {
+    if (!layout) {
+      reaction.classList.remove('visible');
+      reaction.style.left = '';
+      reaction.style.top = '';
+      reaction.dataset.listener = '';
+      return;
+    }
+    reaction.style.left = `${layout.left}px`;
+    reaction.style.top = `${layout.top}px`;
+    reaction.dataset.listener = layout.listener || '';
+    reaction.classList.add('visible');
+  }
+
   function measure(result = {}) {
     const { width, height } = bubble.getBoundingClientRect();
     result.width = width;
@@ -53,7 +75,7 @@ export function createSpeechBubble(document = globalThis.document) {
     return result;
   }
 
-  return { update, position, measure };
+  return { update, position, positionReaction, measure };
 }
 
 export function createPresentation({
@@ -82,6 +104,8 @@ export function createPresentation({
   }
 
   function positionDialogue(layout) { speechBubble.position(layout); }
+
+  function positionReaction(layout) { speechBubble.positionReaction(layout); }
 
   function measureDialogue(result) { return speechBubble.measure(result); }
 
@@ -164,6 +188,6 @@ export function createPresentation({
   }
 
   const dispose = () => clearTimeout(chromeTimer);
-  return { updateDialogue, positionDialogue, measureDialogue, updateCaption,
+  return { updateDialogue, positionDialogue, positionReaction, measureDialogue, updateCaption,
     setPlayLabel, revealControls, mount, dots, playBtn, dispose };
 }

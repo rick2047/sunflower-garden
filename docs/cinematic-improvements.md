@@ -1,5 +1,15 @@
 # Cinematic improvements
 
+## Scene-edge pacing and listener reactions — 2026-10-29
+
+Scene dialogue now begins 1.15 seconds after a cut. Non-final scenes end 1.5
+seconds after their last dialogue or authored action coda; the final scene keeps
+its 4.8-second end-card hold. The runtime is now 316.21 seconds (5:16.21), with
+the original dialogue text and action codas preserved. Every spoken bubble also
+shows a separate emoji reaction anchored near the non-speaking character. The
+browser regression checks every dialogue turn, attribution, proximity, viewport
+bounds at 1440×900 and 390×844, and hiding during quiet beats.
+
 ## Direct completion pass — 2026-10-28
 
 The user authorized direct implementation after the delegated visibility review
@@ -13,7 +23,8 @@ the soil reach. Shared morning/joy hands are in front of the bodies. Storm-retur
 actors have separate lateral marks, with the shared point within 0.1 world unit
 of the broken hinge at 27.5 seconds. Task eyelines are neck-limited; portrait
 framing preserves the flower crowns. These changes preserve story text, the
-399-second duration, fixed pot geography, character assets and all contact tests.
+then-current 399-second duration, fixed pot geography, character assets and all
+contact tests. The 2026-10-29 scene-edge pass below reduces the current runtime.
 
 The previous review's requirement that both faces, all fingertips, and the soil
 be simultaneously unobstructed is not claimed as universally met. Dense repair
@@ -21,16 +32,17 @@ geometry and small portrait contacts remain stylized. Auditory judgment and the
 unchecked full-film artistic review items remain explicitly open; automated
 playback and sampled images are not a substitute for those judgments.
 
-Final combined browser gate passed after screenplay/UI extraction, footstep cues
-and acting accents: 12 chapters, 399 seconds, no asset warnings, all prior
+The prior combined browser gate passed after screenplay/UI extraction, footstep
+cues and acting accents: 12 chapters, 399 seconds, no asset warnings, all prior
 determinism/contact/grounding/geography/control/reduced-motion assertions intact.
 `node tests/story-modules.mjs` also passed (exact original dialogue/timing hash,
 named cue crossings and presentation controls); all six Python tests passed.
 
-Continuous playback also completed all 399 seconds with sound enabled, no page
-errors and a held ending card. Twelve chronological chapter captures were
-inspected, alongside the action-specific desktop/mobile images. This is sampled
-visual evidence, not a claim to have heard the soundtrack or screened every frame.
+At that prior baseline, continuous playback completed all 399 seconds with sound
+enabled, no page errors and a held ending card. Twelve chronological chapter
+captures were inspected, alongside the action-specific desktop/mobile images.
+This is sampled visual evidence, not a claim to have heard the soundtrack or
+screened every frame.
 
 This tracks the user's approved review of the garden film. Preserve the existing
 12-chapter story and character identity. Checked items are implemented; unchecked
@@ -118,10 +130,12 @@ is no longer blocked on Blockbench.
   *(Provisional round 1 covers the storm slip/re-grip at 7.0/10.2 s, tape pickup
   at 18 s, return cut at 24.5 s, morning hold at 23 s and final-line shot at
   26.5 s; other cues remain fixed.)*
-- [ ] Review the full 399-second running time for unearned pauses/repetition.
-- [ ] Review every scene/chapter opening and ending for dead air; trim
-  unmotivated boundary pauses while preserving intentional dramatic and reaction
-  beats.
+- [ ] Review the full 316.21-second running time for unearned pauses/repetition.
+- [x] Remove unmotivated scene-edge pauses while preserving intentional action.
+  Dialogue starts at 1.15 s; non-final scene cuts follow the last meaningful line
+  or authored action coda by 1.5 s. `tests/story-modules.mjs` verifies these
+  limits and the preserved 4.8 s final end-card hold; `tests/cinematic.cjs`
+  passes in Chromium at desktop and mobile viewports.
 
 ## 8. Presentation
 
@@ -137,9 +151,11 @@ is no longer blocked on Blockbench.
   Grounded approach, shared holds, release/re-grip, neck-limited task glances,
   wind bracing, hesitation and differentiated conversational gestures carry
   emotion; dialogue bubbles show only speaker-attributed spoken lines.
-- [ ] Alongside every speaker-attributed dialogue bubble, show a distinct emoji
+- [x] Alongside every speaker-attributed dialogue bubble, show a distinct emoji
   reaction from the non-speaking character. Keep it separate from the spoken text;
   this supplements, rather than replaces, the physical acting above.
+  `tests/cinematic.cjs` checks each reaction's character, emoji, proximity and
+  viewport bounds at 1440×900 and 390×844, and verifies it hides on quiet beats.
 
 ## 9. Lighting and sound
 

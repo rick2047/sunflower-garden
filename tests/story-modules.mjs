@@ -11,31 +11,54 @@ import { Soundscape } from '../soundscape.js';
 const sha = (value) => crypto.createHash('sha256').update(value).digest('hex');
 
 assert.equal(CHAPTERS.length, 12, 'screenplay must keep 12 chapters');
-assert.equal(STORY_DURATION, 399, 'screenplay duration must remain 399 s');
-assert.equal(sha(JSON.stringify(CHAPTERS.map((c) => c.dialogue))),
-  '36a80f477a00f52dca55ab28df7276ec787bba458421e2079f90bb35f3284a81',
-  'chapter dialogue text/timing changed');
-assert.equal(sha(JSON.stringify(CHAPTERS.map((c) => [c.id, c.title, c.dur]))),
-  '699c6c2361ab0a542534f190cec62b9425af4d928cbfaf92f5295c552c745434',
-  'chapter ids/titles/durations changed');
+assert.equal(STORY_DURATION, 316.21, 'scene-boundary pacing changed the validated runtime');
+assert.equal(sha(JSON.stringify(CHAPTERS.map((c) => c.lines.map(({ speaker, emotion, text, pauseAfter }) =>
+  [speaker, emotion, text, pauseAfter])))),
+  'a8f189bf899d87ca1e52ce3aa462aea4357dfeb7f6b7c0127ae452f135e1dd3f',
+  'dialogue content changed while tightening scene timing');
+
+const closingActionEnds = {
+  sowing: STORY_CUES.sowing.rise + 1.5,
+  'weather-turns': 18,
+  storm: STORY_CUES.storm.settleEnd,
+  'morning-after': STORY_CUES['morning-after'].holdEnd,
+};
+for (const chapter of CHAPTERS) {
+  assert.ok(chapter.dialogue[0].start <= 1.5,
+    `${chapter.id} delays its first line beyond the opening beat`);
+  const lastLine = chapter.dialogue.at(-1);
+  if (chapter.id === 'summer') {
+    assert.ok(Math.abs(chapter.dur - lastLine.end - 4.8) < 0.01,
+      'final end-card hold changed');
+    continue;
+  }
+  const sceneCueEnds = Object.entries(chapter.cues || {})
+    .filter(([name]) => name.toLowerCase().endsWith('end'))
+    .map(([, seconds]) => seconds);
+  const finalBeat = Math.max(lastLine.end, closingActionEnds[chapter.id] || 0, ...sceneCueEnds);
+  const remaining = chapter.dur - finalBeat;
+  assert.ok(remaining >= 1 && remaining <= 2,
+    `${chapter.id} leaves ${remaining.toFixed(2)}s after its final meaningful beat`);
+}
 
 const final = CHAPTERS.at(-1);
 assert.equal(final.dialogue.at(-1).text, 'Especially the part with you.');
 assert.equal(dialogueAt(11, 28).text, 'Especially the part with you.');
 assert.equal(dialogueAt(0, 1).phase, 'quiet');
-assert.equal(dialogueAt(0, 3).speaker, 'Paresh');
-assert.equal(dialogueAt(0, 3).listener, 'Anshita');
+assert.equal(dialogueAt(0, 1.5).speaker, 'Paresh');
+assert.equal(dialogueAt(0, 1.5).listener, 'Anshita');
 assert.ok(capturesFor(CHAPTERS[0]).turn1 > 0);
 
 assert.deepEqual([...JOY_APPROACH.footfalls], [15.9, 16.3, 16.7, 17.1]);
 assert.deepEqual([...JOY_APPROACH.footfallSides], ['R', 'L', 'R', 'L']);
-assert.equal(lineCue('storm', 4, 'end', 1), 18);
-assert.equal(STORY_CUES.storm.leaving, 17.2);
-assert.equal(STORY_CUES.storm.tapeRun, 18);
+assert.equal(lineCue('storm', 4, 'end', 1), 17.15);
+assert.equal(STORY_CUES.storm.leaving, 16.35);
+assert.equal(STORY_CUES.storm.tapeRun, 17.15);
 assert.equal(STORY_CUES.storm.return, 24.5);
-assert.equal(STORY_CUES['morning-after'].holdStart, 22.8);
+assert.equal(STORY_CUES['morning-after'].holdStart, 20.95);
 assert.equal(STORY_CUES.sowing.rise, 23.5);
-assert.equal(STORY_CUES.summer.soundFadeStart, 29.6);
+assert.equal(STORY_CUES.summer.soundFadeStart, 28.75);
+assert.equal(STORY_CUES['weather-turns'].flowersFall, 18);
 
 const bubbleLayout = (overrides = {}) => layoutSpeechBubble({
   anchor: { x: 195, y: 280 },
@@ -96,8 +119,8 @@ assert.equal(steps.length, 4);
 assert.deepEqual(steps.map((cue) => cue.at), [15.9, 16.3, 16.7, 17.1]);
 assert.ok(steps.every((cue) => cue.kind === 'footstep'));
 assert.deepEqual(steps.map((cue) => cue.side), ['R', 'L', 'R', 'L']);
-assert.deepEqual(FOLEY_CUES.dawn.map((cue) => cue.at), [2.2]);
-assert.deepEqual(FOLEY_CUES['seven-am'].map((cue) => cue.at), [5, 6.7]);
+assert.deepEqual(FOLEY_CUES.dawn.map((cue) => cue.at), [1.2]);
+assert.deepEqual(FOLEY_CUES['seven-am'].map((cue) => cue.at), [4.15, 5.85]);
 
 // Exercise the extracted control module against a minimal DOM double.
 function fakeClassList() {
@@ -126,7 +149,7 @@ function fakeControlElement(id = '') {
 function fakeDocument() {
   const ids = new Map();
   for (const id of ['caption', 'counter', 'dots', 'play', 'speech-bubble', 'bubble-speaker',
-    'bubble-text', 'announcement', 'transcript-lines', 'prev', 'next', 'replay',
+    'bubble-text', 'listener-reaction', 'announcement', 'transcript-lines', 'prev', 'next', 'replay',
     'continue', 'story-notes', 'transcript', 'transcript-close']) ids.set(id, fakeControlElement(id));
   ids.get('transcript-lines').appendChild = (child) => ids.get('transcript-lines').children.push(child);
   const body = fakeControlElement('body');
@@ -187,4 +210,4 @@ assert.deepEqual(struck, [
 ], 'joy gait footfalls did not fire at their plants');
 assert.equal(struck.every(([, at]) => JOY_APPROACH.footfalls.includes(at)), true);
 
-console.log('story modules ok: 12 chapters, 399 s, named cues, speech-bubble layout');
+console.log(`story modules ok: ${CHAPTERS.length} chapters, ${STORY_DURATION.toFixed(1)} s, named cues, speech-bubble layout`);

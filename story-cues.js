@@ -37,6 +37,7 @@ export const STORY_CUES = Object.freeze({
     // The pair rises after their final line, then the chapter holds.
     rise: lineCue('sowing', 7, 'end', 0.53),
   }),
+  'weather-turns': Object.freeze({ flowersFall: chapterById('weather-turns').endBeat.at }),
   storm: Object.freeze({
     slip: lineCue('storm', 2),
     regrip: lineCue('storm', 3, 'start', 0.2),
@@ -46,13 +47,13 @@ export const STORY_CUES = Object.freeze({
     return: 24.5,
     kneelIn: 24.7,
     kneelEnd: 26.0,
-    settleEnd: 27.0,
+    settleEnd: chapterById('storm').endBeat.at,
     returnHold: 26.15,
     support: 26,
   }),
   'morning-after': Object.freeze({
     holdStart: lineCue('morning-after', 4, 'start', -0.2),
-    holdEnd: 32.5,
+    holdEnd: chapterById('morning-after').endBeat.at,
     headLook: lineCue('morning-after', 4, 'start'),
   }),
   'seven-am': Object.freeze({

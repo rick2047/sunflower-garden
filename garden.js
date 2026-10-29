@@ -185,7 +185,8 @@ const S = {
   stage: null, door: null, stageLamp: null, roomLight: null, doorAngle: 0,
   laptopScreen: null, laptopKeyboard: null, laptopHome: null, laptopMode: 'hidden',
   models: [], assetWarnings: [], filmCard: null,
-  bubbleLayout: null, bubblePlacement: null, bubbleOffset: { x: 0, y: 0 },
+  bubbleLayout: null, bubblePlacement: null, listenerReactionLayout: null,
+  bubbleOffset: { x: 0, y: 0 },
   bubbleSize: { width: 0, height: 0 }, bubbleNeedsLayout: true, bubbleUpdateCount: 0,
   performers: null, performance: { joy: {}, kneel: {}, contacts: {} },
 };
@@ -297,6 +298,27 @@ const _bubbleLayoutInput = {
   anchor: _dialogueAnchor, size: S.bubbleSize, viewport: _dialogueViewport,
   obstacles: _dialogueObstacles, safeArea: _dialogueSafeArea, gap: 18,
 };
+const _listenerReactionLayout = {
+  left: 0, top: 0, width: 0, height: 0, listener: '', anchor: { x: 0, y: 0 },
+};
+
+function layoutListenerReaction(listener, compact) {
+  const size = compact ? 40 : 44;
+  const gap = compact ? 8 : 12;
+  const left = clamp(_dialogueListenerAnchor.x + (compact ? 18 : 22),
+    8, Math.max(8, innerWidth - size - 8));
+  const top = clamp(_dialogueListenerAnchor.y - size - gap,
+    8, Math.max(8, innerHeight - size - 8));
+  _listenerReactionLayout.left = left;
+  _listenerReactionLayout.top = top;
+  _listenerReactionLayout.width = size;
+  _listenerReactionLayout.height = size;
+  _listenerReactionLayout.listener = listener;
+  _listenerReactionLayout.anchor.x = _dialogueListenerAnchor.x;
+  _listenerReactionLayout.anchor.y = _dialogueListenerAnchor.y;
+  return _listenerReactionLayout;
+}
+
 function projectDialogueHead(name, target) {
   const isParesh = name === 'Paresh';
   const character = isParesh ? S.paresh : S.anshita;
@@ -322,18 +344,34 @@ function layoutDialogueBubble(ch, storyT, dialogue) {
   if (dialogue.phase !== 'line' || !projectDialogueHead(dialogue.speaker, _dialogueAnchor)) {
     S.bubbleLayout = null;
     S.bubblePlacement = null;
+    S.listenerReactionLayout = null;
     S.bubbleNeedsLayout = true;
     presentation.positionDialogue(null);
+    presentation.positionReaction(null);
     return;
   }
 
+  const compact = innerWidth <= 620;
+  const listenerProjected = projectDialogueHead(dialogue.listener, _dialogueListenerAnchor);
+  if (listenerProjected) {
+    S.listenerReactionLayout = layoutListenerReaction(dialogue.listener, compact);
+    presentation.positionReaction(S.listenerReactionLayout);
+  } else {
+    S.listenerReactionLayout = null;
+    presentation.positionReaction(null);
+  }
+
   if (S.bubbleNeedsLayout || !S.bubblePlacement) {
-    const compact = innerWidth <= 620;
-    if (projectDialogueHead(dialogue.listener, _dialogueListenerAnchor)) {
-      _dialogueObstacle.left = _dialogueListenerAnchor.x - (compact ? 24 : 32);
-      _dialogueObstacle.right = _dialogueListenerAnchor.x + (compact ? 24 : 32);
-      _dialogueObstacle.top = _dialogueListenerAnchor.y - (compact ? 25 : 32);
-      _dialogueObstacle.bottom = _dialogueListenerAnchor.y + (compact ? 20 : 25);
+    if (listenerProjected) {
+      const reaction = S.listenerReactionLayout;
+      _dialogueObstacle.left = Math.min(_dialogueListenerAnchor.x - (compact ? 24 : 32),
+        reaction.left - 8);
+      _dialogueObstacle.right = Math.max(_dialogueListenerAnchor.x + (compact ? 24 : 32),
+        reaction.left + reaction.width + 8);
+      _dialogueObstacle.top = Math.min(_dialogueListenerAnchor.y - (compact ? 25 : 32),
+        reaction.top - 8);
+      _dialogueObstacle.bottom = Math.max(_dialogueListenerAnchor.y + (compact ? 20 : 25),
+        reaction.top + reaction.height + 8);
       _dialogueObstacles.length = 1;
     } else {
       _dialogueObstacles.length = 0;
@@ -372,7 +410,8 @@ function layoutDialogueBubble(ch, storyT, dialogue) {
 
 function updateFilmCard(ch, seconds) {
   const chapter = CH[ch];
-  const titleCard = chapter.id === 'dawn' && seconds < 2.15;
+  const titleEnd = CH[0].dialogue[0].start;
+  const titleCard = chapter.id === 'dawn' && seconds < titleEnd;
   const endingCard = chapter.id === 'summer' && seconds >= STORY_CUES.summer.endCardStart;
   if (!titleCard && !endingCard) {
     filmCard.style.visibility = 'hidden';
@@ -381,7 +420,9 @@ function updateFilmCard(ch, seconds) {
     return;
   }
   const endStart = chapter.id === 'summer' ? STORY_CUES.summer.endCardStart : chapter.dur - 4.4;
-  const opacity = titleCard ? 1 - smooth((seconds - 0.45) / 1.7)
+  const titleFadeStart = Math.min(0.45, titleEnd * 0.3);
+  const opacity = titleCard
+    ? 1 - smooth((seconds - titleFadeStart) / Math.max(0.1, titleEnd - titleFadeStart))
     : smooth((seconds - endStart) / 1.05);
   const titleOpacity = titleCard ? opacity : smooth((seconds - endStart - 1.2) / 0.45);
   filmCardTitle.textContent = 'TALLER THAN US';
@@ -889,7 +930,8 @@ function applyState(ch, t) {
   setVis('coffee_surfaces', ch === 11);
   setVis('tulip_petals_floor', ch >= 4 && ch <= 6);
   setVis('tulip_petal_drain', ch >= 4 && ch <= 6);
-  const flattenedFlowers = (ch === 5 && storyT >= 18) || ch === 6 || ch === 7;
+  const flattenedFlowers = (ch === 5 && storyT >= STORY_CUES['weather-turns'].flowersFall)
+    || ch === 6 || ch === 7;
   setVis('storm_petunia_flattened', flattenedFlowers);
   if (flattenedFlowers) setVis('petunia_bloom', false);
   setVis('storm_mogra_fallen', ch === 7);
@@ -991,8 +1033,8 @@ function applyState(ch, t) {
       // Paresh is at the room table; the camera work is in film-direction.js.
       S.paresh.position.set(-20, 4, -22);
     } else if (ch === 6) {
-      // He holds with her through "Don't let go", fetches the tape on the cut at
-      // 18 s, then returns to her side on a second cut at 24.5 s. The tape run
+      // He holds with her through "Don't let go", leaves one second after
+      // "I need the tape", then returns on the authored 24.5 s cut. The tape run
       // is an editorial cut, not a root slide through the set.
       // The fixed pot row puts the broken hinge 15 units behind the old action
       // bay, so the stem-holding marks use the authored bay minus that depth.
@@ -1486,6 +1528,8 @@ function state() {
       timeSuper: timeSuper.style.visibility === 'visible', roomLight: S.roomLight?.intensity ?? 0 },
     dialogue: dialogueAt(S.chapter, S.t),
     bubbleLayout: S.bubbleLayout ? { ...S.bubbleLayout, anchor: { ...S.bubbleLayout.anchor } } : null,
+    listenerReactionLayout: S.listenerReactionLayout ? { ...S.listenerReactionLayout,
+      anchor: { ...S.listenerReactionLayout.anchor } } : null,
     bubbleUpdateCount: S.bubbleUpdateCount, filmCard: S.filmCard,
     frame: renderer.info.render.frame, reducedMotion: reduced, assetWarnings: S.assetWarnings,
   };
