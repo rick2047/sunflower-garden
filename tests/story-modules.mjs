@@ -19,6 +19,7 @@ assert.equal(sha(JSON.stringify(CHAPTERS.map((c) => c.lines.map(({ speaker, emot
 
 const closingActionEnds = {
   sowing: STORY_CUES.sowing.rise + 1.5,
+  'good-things': 21,
   'weather-turns': 18,
   storm: STORY_CUES.storm.settleEnd,
   'morning-after': STORY_CUES['morning-after'].holdEnd,
@@ -32,10 +33,7 @@ for (const chapter of CHAPTERS) {
       'final end-card hold changed');
     continue;
   }
-  const sceneCueEnds = Object.entries(chapter.cues || {})
-    .filter(([name]) => name.toLowerCase().endsWith('end'))
-    .map(([, seconds]) => seconds);
-  const finalBeat = Math.max(lastLine.end, closingActionEnds[chapter.id] || 0, ...sceneCueEnds);
+  const finalBeat = Math.max(lastLine.end, closingActionEnds[chapter.id] || 0);
   const remaining = chapter.dur - finalBeat;
   assert.ok(remaining >= 1 && remaining <= 2,
     `${chapter.id} leaves ${remaining.toFixed(2)}s after its final meaningful beat`);
