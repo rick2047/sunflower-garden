@@ -14,6 +14,7 @@ were made as part of the review.
 
 ## Reports
 
+- [Proposed fix plan](fix-plan.md)
 - [Early garden](early-garden.md)
 - [Storm and morning after](storm-and-morning-after.md)
 - [Shared repair and height reveal](repair-and-height.md)
