@@ -23,9 +23,31 @@ arrival before dialogue. This is not a substitute for subjective full-film revie
 A read-only visual audit sampled the full 322.86-second story at regular story-time
 intervals, plus chapter-entry and action frames. Six reports cover the garden,
 storm, repair/height reveal, bloom/ending, and both character models. Findings are
-review candidates only; no implementation or checklist state changed. See the
+review candidates only; the audit itself made no implementation changes. The user
+later authorized evidence-led fixes. See the implementation note below and the
 [visual audit index](visual-audit-2026-10-29/README.md) for reports and frame
 references.
+
+## Visual audit implementation follow-up — 2026-10-29
+
+The authorized pass updates `film-direction.js` and `garden.js`: the storm tape
+insert brings the tape hand and held stem closer together; the shared-repair view
+is less overhead; the joy camera move begins during the final approach step so the
+hands are framed at contact; and the end of seven-am now pre-rolls into the
+measure camera so the first reveal frame includes the stalk tips. Sowing seeds and
+hand targets move inward together, and one bee takes a small deterministic lateral
+detour around Anshita's face. Story text, dialogue timing, actor identity, fixed set
+geography, and total runtime are unchanged.
+
+`tests/cinematic.cjs` passed in Chromium at 1440×900 and 390×844, including the
+new loaded-rig, prop, shot-continuity, face/tip-frame, and contact checks. The
+story-module tests, six Python server tests, JavaScript syntax checks, and
+`git diff --check` also passed; there were no loader warnings or page errors.
+Selected desktop/mobile captures are in the ignored
+`.artifacts/visual-fix-20261029/` directory. This is sampled evidence, not a
+continuous film review: leaf overlap still competes with faces in some measure and
+bloom frames, so the broader silhouette/contact review remains open. Paresh's
+model candidates were not confirmed defects; no model geometry was changed.
 
 ## Direct completion pass — 2026-10-28
 
@@ -113,7 +135,9 @@ is no longer blocked on Blockbench.
   doorway, shared repair hands and flower reaction.
   *(Provisional round 2: seed contact, failed grip, shared repair and flower
   reaction have named shots, and the empty-doorway insert now exists in the
-  morning-after quiet opening (0–3 s). Image review of all five remains open.)*
+  morning-after quiet opening (0–3 s). The 2026-10-29 follow-up adjusts the tape,
+  repair, joy and height-reveal framing, with sampled desktop/mobile captures;
+  image review of all five inserts and reactions remains open.)*
 - [x] Resolve the partially obscured kneeling character in the storm return.
   Direct pass separates the actor marks to x=-20/0, raises the task angle and
   widens portrait framing. Desktop/mobile captures show separate faces/torso
@@ -127,7 +151,9 @@ is no longer blocked on Blockbench.
   checks assert invariant pot, plant-root and flower positions across ch1/ch5–ch9
   while the breakage state still changes.
 - [ ] Verify silhouettes, contact and screen direction throughout moving shots,
-  beyond the captured checkpoints.
+  beyond the captured checkpoints. The 2026-10-29 follow-up rechecked cited
+  tape-run, repair, joy and measure samples in both viewports; continuous motion
+  review and remaining leaf/face overlap assessment are still open.
 
 ## 5. Dialogue
 

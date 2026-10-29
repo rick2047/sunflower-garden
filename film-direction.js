@@ -6,6 +6,7 @@ const pose = () => ({ position: [0, 0, 0], target: [0, 0, 0], shot: '', start: 0
 const _rawPose = pose(), _cutFrom = pose(), _cutPose = pose(), _sceneFrom = pose(), _finalPose = pose();
 const CUT_BLEND_SECONDS = 0.9;
 const STORM_CUT_BLEND_SECONDS = 0.35;
+const APPROACH_CUT_BLEND_SECONDS = 0.6;
 export const SCENE_CAMERA_BLEND_SECONDS = 1.15;
 
 function sampleShotPose(aspect, chapter, seconds, reduced, sowFocus, result) {
@@ -55,9 +56,9 @@ function sampleShotPose(aspect, chapter, seconds, reduced, sowFocus, result) {
         frame('failed-grip', failedGripAt, [-6, 20, -2],
           [mobile ? 0 : -8, mobile ? 48 : 32, mobile ? 83 : 48]);
       } else if (seconds >= tapeRunAt && seconds < 24.5) {
-        // The tape cue is at the fixed tape prop; frame him away from her so the
-        // working hand and the still-held stem are separate screen events.
-        frame('tape-run', tapeRunAt, [-2, 21, 2], [0, mobile ? 45 : 30, mobile ? 100 : 65]);
+        // Keep the held hinge and the tape in his working hand large enough to
+        // read together; this is a closer, lower insert, not a new blocking mark.
+        frame('tape-run', tapeRunAt, [-2, 22, 6], [0, mobile ? 40 : 18, mobile ? 135 : 39]);
       } else if (seconds >= 24.5) {
         // Frontal off-axis from the returning side: the kneeling figure and the
         // standing holder separate, with the stem still between them.
@@ -80,7 +81,16 @@ function sampleShotPose(aspect, chapter, seconds, reduced, sowFocus, result) {
       // Shared middle-pot repair: the joint sits near face height for the
       // camera, so the two hands and the tape read against the sky instead of
       // under the leaves above the fixed pot.
-      frame('shared-repair', 0, [0, 21, -2], [0, mobile ? 58 : 37, mobile ? 82 : 42]);
+      frame('shared-repair', 0, [0, 21, -2], [0, mobile ? 28 : 10, mobile ? 92 : 60]);
+    } else if (id === 'seven-am') {
+      // Use the quiet coda after the last repair line to set up the height
+      // reveal. The following chapter then blends from a frame that already
+      // contains the stalk tips instead of inheriting the tight repair insert.
+      const preRevealAt = Math.max(chapter.dialogue.at(-1).end,
+        chapter.dur - SCENE_CAMERA_BLEND_SECONDS);
+      const radius = mobile ? 104 : 76;
+      frame('height-reveal-prep', preRevealAt, [0, 25, 7],
+        [Math.sin(-0.3) * radius, -15, Math.cos(-0.3) * radius]);
     }
   } else if (id === 'measure') {
     // Save the sustained orbit and crane for the title's payoff.
@@ -97,12 +107,14 @@ function sampleShotPose(aspect, chapter, seconds, reduced, sowFocus, result) {
     return result;
   } else if (id === 'bloom') {
     frame('flower-reveal', 0, [0, 35, 0], [12, 8, mobile ? 126 : 98]);
-    if (seconds >= 15.5 && seconds < 17.1) {
+    if (seconds >= 15.5 && seconds < 16.2) {
       // Approach insert on the deck: the four alternating steps read before the
       // cut back up to the flowers and the shared reaction.
       frame('approach-steps', 15.5, [0, 17, 4], [6, 5, mobile ? 96 : 60]);
-    } else if (seconds >= 17.1) {
-      frame('shared-joy', 17.1, [0, 32, 5], [0, mobile ? 38 : 23, mobile ? 135 : 88]);
+    } else if (seconds >= 16.2) {
+      // Begin this move during the last step so the held hands are composed
+      // when the shared contact completes at 17.1 seconds.
+      frame('shared-joy', 16.2, [0, 25, 8], [0, mobile ? 28 : 18, mobile ? 105 : 68]);
     }
   } else if (id === 'summer') {
     frame('last-light', 0, [0, 27, 1], [14, 13, mobile ? 126 : 105]);
@@ -153,7 +165,8 @@ export function directShot(camera, look, chapter, seconds, reduced, sowFocus = 0
   previousChapter = null, previousSowFocus = 0) {
   const current = sampleShotPose(camera.aspect, chapter, seconds, reduced, sowFocus, _rawPose);
   let destination = copyPose(current, _cutPose);
-  const cutBlend = chapter.id === 'storm' ? STORM_CUT_BLEND_SECONDS : CUT_BLEND_SECONDS;
+  const cutBlend = chapter.id === 'storm' ? STORM_CUT_BLEND_SECONDS
+    : current.shot === 'approach-steps' ? APPROACH_CUT_BLEND_SECONDS : CUT_BLEND_SECONDS;
 
   if (!reduced && current.start > 0 && seconds < current.start + cutBlend) {
     const from = sampleShotPose(camera.aspect, chapter, current.start - 0.001,

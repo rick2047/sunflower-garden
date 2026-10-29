@@ -28,7 +28,7 @@ const PA_BASE = [-20, 0, -6], AN_BASE = [20, 0, -6];
 /* Scene-2: keep the authored pot row intact while the kneeling pair travels
    first → second → third. The action times are anchored to the corresponding
    dialogue turns so seeking and replay produce the same handoff. */
-const SOW_ACTOR_Z = -3.5, SOW_SOIL_Z = 0.8;
+const SOW_ACTOR_Z = -3.5, SOW_SOIL_Z = -0.2;
 /* The storm and repair chapters were originally staged by sliding the whole pot
    and plant set 15 units toward the camera inside those chapters. The authored
    set now keeps one geography everywhere, so the same action bay is expressed
@@ -1567,7 +1567,13 @@ function applyState(ch, t) {
     b.visible = !!c.bees;
     if (!c.bees) return;
     const s = b.userData.seed, bt = reduced ? 0 : storyT;
-    b.position.set(Math.sin(bt * 0.8 + s) * 15 + (i - 1) * 7,
+    // Bee 2 briefly crosses Anshita's lower face at the joy approach. Give it
+    // a small, smooth lateral detour through that shot; the path remains an
+    // absolute-time orbit and rejoins the garden route before the shared hold.
+    const faceClearance = c.id === 'bloom' && i === 1
+      ? 6 * smooth((bt - 14.8) / 0.7) * (1 - smooth((bt - 15.6) / 1.0))
+      : 0;
+    b.position.set(Math.sin(bt * 0.8 + s) * 15 + (i - 1) * 7 - faceClearance,
       21 + Math.sin(bt * 1.6 + s) * 3.5,
       4 + Math.cos(bt * 0.6 + s) * 11);
     b.rotation.y = Math.sin(bt * 0.8 + s);

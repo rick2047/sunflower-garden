@@ -37,6 +37,18 @@ async page => {
       g.seek(6,21); assert(rain !== g.S.rain.geometry.attributes.position.getY(0), 'Rain freezes after visualDur');
       g.seek(10,22); const bee = g.S.bees[0].position.clone();
       g.seek(10,23); assert(bee.distanceTo(g.S.bees[0].position) > 0.01, 'Bees freeze after visualDur');
+      for (const time of [15.5, 15.6]) {
+        g.seek(10, time);
+        const body = g.S.rig.aBody, base = g.S.rig.base.aBody;
+        const face = new g.THREE.Vector3(...g.S.rig.base.aHeadAnchor);
+        face.y += body.position.y - base.position[1] + 4;
+        g.S.anshita.localToWorld(face);
+        const bee = g.S.bees[1];
+        bee.updateWorldMatrix(true, false);
+        const beePosition = bee.getWorldPosition(new g.THREE.Vector3());
+        assert(beePosition.distanceTo(face) > 12,
+          `Bloom bee crowds Anshita's face at ${time}: ${beePosition.distanceTo(face).toFixed(2)}`);
+      }
       g.seek(10,15.499); const p = g.S.paresh.position.clone(), a = g.S.anshita.position.clone();
       g.seek(10,15.501);
       assert(p.distanceTo(g.S.paresh.position) < 0.01 && a.distanceTo(g.S.anshita.position) < 0.01, 'Embrace snaps');
@@ -237,6 +249,22 @@ async page => {
       finalContact(contacts.seed.anshita, 'anshita', 'R', 'sow 17 Anshita');
       assert(contacts.seed.paresh.distance < 0.7 && contacts.seed.anshita.distance < 0.7,
         'Sowing hand misses the soil at the third pot');
+      for (const [time, potX, seedIndex] of [[2.08, -13, 1], [6, -13, 1], [7.68, 0, 0]]) {
+        g.seek(1, time);
+        contacts = g.performance().contacts.seed;
+        const pot = g.S.potPivots.find(({ bone }) => Math.abs(bone.position.x - potX) < 0.01);
+        assert(pot, `Missing sowing pot at x=${potX}`);
+        const potZ = pot.bone.position.z;
+        const seedGroup = g.S.variants.seeds[seedIndex].group;
+        seedGroup.updateWorldMatrix(true, false);
+        const seedPosition = seedGroup.getWorldPosition(new g.THREE.Vector3());
+        assert(Math.abs(contacts.target[2] - potZ) <= 1.0,
+          `Sowing contact is still near the rim at ${time}`);
+        assert(Math.abs(seedPosition.z - potZ) <= 1.0,
+          `Placed seed is still near the rim at ${time}`);
+        finalContact(contacts.paresh, 'paresh', 'L', `sow ${time} Paresh`);
+        finalContact(contacts.anshita, 'anshita', 'R', `sow ${time} Anshita`);
+      }
       g.seek(1, 26);
       contacts = g.performance().contacts;
       assert(contacts.seed.paresh.distance > 2,
@@ -374,7 +402,10 @@ async page => {
       g.seek(7, 2.2); assert(g.state().shot === 'care-two-shot',
         'Empty-doorway insert overruns the quiet beat');
       g.seek(10, 16); assert(g.state().shot === 'approach-steps', 'Approach step shot missing');
+      g.seek(10, 16.3); assert(g.state().shot === 'shared-joy', 'Shared-joy frame starts too late');
       g.seek(10, 17.2); assert(g.state().shot === 'shared-joy', 'Shared joy shot missing');
+      g.seek(8, g.chapters[8].duration);
+      assert(g.state().shot === 'height-reveal-prep', 'Measure pre-reveal shot missing');
       g.seek(11, 28); assert(g.state().shot === 'last-line', 'Final-line shot missing');
       return { chapters: g.chapters.length, duration: g.storyDuration,
         drawCalls: g.renderer.info.render.calls, triangles: g.renderer.info.render.triangles,
@@ -403,6 +434,90 @@ async page => {
         const tapeStep = cameraStep(beforeTapeCut, cameraPose());
         assert(tapeStep.distance < 0.25 && tapeStep.angle < 0.02,
           `${width}x${height}: abrupt storm camera cut`);
+
+        // The tape hand, tape prop and Anshita's held hinge must be composed
+        // together, with enough screen scale to read the small fastening prop.
+        g.seek(6, 21);
+        const tapeFocus = new g.THREE.Vector3(-2, 22, 6);
+        const maxTapeDistance = width < 500 ? 150 : 50;
+        assert(g.camera.position.distanceTo(tapeFocus) < maxTapeDistance,
+          `${width}x${height}: tape-run action is framed too far away`);
+        const pointInSafeFrame = (point, label, margin = 0.9) => {
+          const projected = point.clone().project(g.camera);
+          assert(Math.abs(projected.x) < margin && Math.abs(projected.y) < margin && projected.z < 1,
+            `${width}x${height}: ${label} leaves the tape-run frame`);
+        };
+        const handNode = (who, side) => {
+          const root = g.S[who];
+          const node = root.getObjectByName(`hand_${side}_smooth__pivot`)
+            || root.getObjectByName(`hand_${side}_mesh__pivot`);
+          assert(node, `Missing ${who} ${side} hand for tape-run framing`);
+          node.updateWorldMatrix(true, false);
+          return node.getWorldPosition(new g.THREE.Vector3());
+        };
+        const tape = g.S.variants.tape[0].group;
+        tape.updateWorldMatrix(true, false);
+        pointInSafeFrame(tape.getWorldPosition(new g.THREE.Vector3()), 'tape');
+        pointInSafeFrame(handNode('paresh', 'R'), 'Paresh working hand');
+        pointInSafeFrame(handNode('anshita', 'L'), 'Anshita stem hand');
+        for (const who of ['pHead', 'aHead']) {
+          const head = g.S.rig[who];
+          head.updateWorldMatrix(true, false);
+          pointInSafeFrame(head.getWorldPosition(new g.THREE.Vector3()), `${who} face`, 0.72);
+        }
+        const stormHinge = g.S.plants[0].hinge.broken;
+        stormHinge.updateWorldMatrix(true, false);
+        pointInSafeFrame(stormHinge.getWorldPosition(new g.THREE.Vector3()), 'held stem');
+
+        g.seek(8, 8);
+        const repairView = g.camera.getWorldDirection(new g.THREE.Vector3());
+        assert(repairView.y > -0.35,
+          `${width}x${height}: shared-repair camera looks too steeply down at the hands`);
+        const repairHands = g.performance().contacts.joint;
+        pointInSafeFrame(new g.THREE.Vector3(...repairHands.paresh.hand), 'Paresh repair hand');
+        pointInSafeFrame(new g.THREE.Vector3(...repairHands.anshita.hand), 'Anshita repair hand');
+        const repairHinge = g.S.plants[1].hinge.repair;
+        repairHinge.updateWorldMatrix(true, false);
+        pointInSafeFrame(repairHinge.getWorldPosition(new g.THREE.Vector3()), 'repair hinge');
+
+        g.seek(10, 16.19);
+        const beforeJoyCut = cameraPose();
+        g.seek(10, 16.21);
+        const joyCutStep = cameraStep(beforeJoyCut, cameraPose());
+        assert(joyCutStep.distance < 0.25 && joyCutStep.angle < 0.02,
+          `${width}x${height}: abrupt shared-joy camera move`);
+        g.seek(10, 17.1);
+        assert(g.state().shot === 'shared-joy',
+          `${width}x${height}: shared-joy composition missing at hand contact`);
+        const joyHands = g.performance().contacts.hands;
+        pointInSafeFrame(new g.THREE.Vector3(...joyHands.paresh.hand), 'Paresh shared-joy hand');
+        pointInSafeFrame(new g.THREE.Vector3(...joyHands.anshita.hand), 'Anshita shared-joy hand');
+
+        // The height-reveal cut starts from a dedicated wide composition so
+        // the first authored frame does not clip stalk tips.
+        g.seek(8, g.chapters[8].duration);
+        assert(g.state().shot === 'height-reveal-prep',
+          `${width}x${height}: missing height-reveal pre-roll`);
+        for (const time of [0.08, 14.58, 29.58]) {
+          g.seek(9, time);
+          for (const [index, plant] of g.S.plants.entries()) {
+            const upper = plant.care.getObjectByName('tall_upper');
+            assert(upper, `Missing tall stalk mesh for pot ${index}`);
+            upper.geometry.computeBoundingBox();
+            upper.updateWorldMatrix(true, false);
+            const tip = new g.THREE.Vector3(0, upper.geometry.boundingBox.max.y, 0)
+              .applyMatrix4(upper.matrixWorld).project(g.camera);
+            assert(Math.abs(tip.x) < 0.95 && tip.y < 0.95 && tip.y > -0.95 && tip.z < 1,
+              `${width}x${height}: measure stalk tip ${index} clips at ${time}: ${tip.toArray()}`);
+          }
+          for (const who of ['pHead', 'aHead']) {
+            const head = g.S.rig[who];
+            head.updateWorldMatrix(true, false);
+            const face = head.getWorldPosition(new g.THREE.Vector3()).project(g.camera);
+            assert(Math.abs(face.x) < 0.9 && Math.abs(face.y) < 0.9 && face.z < 1,
+              `${width}x${height}: measure face anchor ${who} leaves frame at ${time}`);
+          }
+        }
 
         for (let chapter = 1; chapter < g.chapters.length; chapter++) {
           g.seek(chapter - 1, g.chapters[chapter - 1].duration - 0.01);

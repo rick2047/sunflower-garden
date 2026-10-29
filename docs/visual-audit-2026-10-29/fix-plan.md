@@ -1,9 +1,10 @@
 # Proposed visual-fix plan — 2026-10-29
 
-**Status: plan only.** No functional, animation, asset, or story changes are
-authorized by this document. Confirm the candidate scope with the user before
-implementation. Findings and screenshot evidence are in this directory's reports
-and the local ignored artifact set at `.artifacts/visual-audit-2026-10-29/`.
+**Status: user-authorized implementation; targeted fixes landed, broader visual
+review remains open.** The original plan-only boundary was superseded by the
+user's explicit implementation request on 2026-10-29. Findings and original
+screenshots remain in this directory's reports and the local ignored artifact set
+at `.artifacts/visual-audit-2026-10-29/`.
 
 ## Goals and guardrails
 
@@ -18,6 +19,36 @@ and the local ignored artifact set at `.artifacts/visual-audit-2026-10-29/`.
   need not be simultaneously unobstructed in every stylized shot.
 - Keep screenshots and local captures in the Git-ignored `.artifacts/` directory;
   commit only source/model changes and documentation.
+
+## Current implementation status — 2026-10-29
+
+- **A — tape-run:** `film-direction.js` now uses a closer insert centered on the
+  tape hand and held hinge. Runtime assertions and rendered captures passed at
+  1440×900 and 390×844; the shot blend and actor/set positions are unchanged.
+- **B — contacts/readability:** sowing hands and placed seeds moved inward together
+  (`SOW_SOIL_Z = -0.2`); the shared-repair view is less overhead; the shared-joy
+  move begins at 16.2 s and is settled at the 17.1 s hand contact; one bee has a
+  small deterministic lateral detour around Anshita's face. Morning handoff poses
+  were sampled and left unchanged. This is not a complete review of every listed
+  action frame.
+- **C — measure:** the end of seven-am now pre-rolls into the measure camera pose.
+  Projected stalk-tip bounds pass at 0.08, 14.58, and 29.58 s in both viewports.
+  Foliage still overlaps some face silhouettes, so the broader reveal review is
+  partial.
+- **D — models:** no model geometry changed. Paresh's headphone, shoe, and jaw
+  candidates were not confirmed defects. The apparent Anshita hip canister is the
+  coffee cup/steam group; the scalp wedge and reach-pose hair clearance remain
+  unconfirmed and untouched.
+- **E — floating pieces:** no props were removed. The dawn pale cluster matches
+  coffee steam; the colored deck shard matches the scaled tulip bloom; the storm
+  piece is the attached support; and the horizontal repair piece is a bent stalk.
+  Seeds are authored and intentional, but their placement moved inward under B.
+
+Validation: `tests/cinematic.cjs` passed at both target viewports with no page
+errors or asset warnings. Story-module and Python server tests, JavaScript syntax
+checks, and `git diff --check` passed. Selected captures are in the ignored
+`.artifacts/visual-fix-20261029/`; independent full-film/silhouette review remains
+open.
 
 ## Issue register and acceptance targets
 
