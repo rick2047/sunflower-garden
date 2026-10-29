@@ -437,7 +437,7 @@ async page => {
         const pointInSafeFrame = (point, label, margin = 0.9) => {
           const projected = point.clone().project(g.camera);
           assert(Math.abs(projected.x) < margin && Math.abs(projected.y) < margin && projected.z < 1,
-            `${width}x${height}: ${label} leaves the tape-run frame`);
+            `${width}x${height}: ${label} leaves the frame`);
         };
         const tape = g.S.variants.tape[0].group;
         tape.updateWorldMatrix(true, false);
@@ -491,16 +491,14 @@ async page => {
             upper.geometry.computeBoundingBox();
             upper.updateWorldMatrix(true, false);
             const tip = new g.THREE.Vector3(0, upper.geometry.boundingBox.max.y, 0)
-              .applyMatrix4(upper.matrixWorld).project(g.camera);
-            assert(Math.abs(tip.x) < 0.95 && tip.y < 0.95 && tip.y > -0.95 && tip.z < 1,
-              `${width}x${height}: measure stalk tip ${index} clips at ${time}: ${tip.toArray()}`);
+              .applyMatrix4(upper.matrixWorld);
+            pointInSafeFrame(tip, `measure stalk tip ${index} at ${time}`, 0.95);
           }
           for (const who of ['pHead', 'aHead']) {
             const head = g.S.rig[who];
             head.updateWorldMatrix(true, false);
-            const face = head.getWorldPosition(new g.THREE.Vector3()).project(g.camera);
-            assert(Math.abs(face.x) < 0.9 && Math.abs(face.y) < 0.9 && face.z < 1,
-              `${width}x${height}: measure face anchor ${who} leaves frame at ${time}`);
+            const face = head.getWorldPosition(new g.THREE.Vector3());
+            pointInSafeFrame(face, `measure face anchor ${who} at ${time}`);
           }
         }
 
