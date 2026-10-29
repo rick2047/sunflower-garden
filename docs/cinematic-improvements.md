@@ -119,6 +119,9 @@ is no longer blocked on Blockbench.
   at 18 s, return cut at 24.5 s, morning hold at 23 s and final-line shot at
   26.5 s; other cues remain fixed.)*
 - [ ] Review the full 399-second running time for unearned pauses/repetition.
+- [ ] Review every scene/chapter opening and ending for dead air; trim
+  unmotivated boundary pauses while preserving intentional dramatic and reaction
+  beats.
 
 ## 8. Presentation
 
@@ -134,6 +137,9 @@ is no longer blocked on Blockbench.
   Grounded approach, shared holds, release/re-grip, neck-limited task glances,
   wind bracing, hesitation and differentiated conversational gestures carry
   emotion; dialogue bubbles show only speaker-attributed spoken lines.
+- [ ] Alongside every speaker-attributed dialogue bubble, show a distinct emoji
+  reaction from the non-speaking character. Keep it separate from the spoken text;
+  this supplements, rather than replaces, the physical acting above.
 
 ## 9. Lighting and sound
 
