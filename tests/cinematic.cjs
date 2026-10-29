@@ -320,6 +320,7 @@ async page => {
       g.seek(6, tapeRunAt + 1.5);
       stem = g.performance().contacts.stem;
       brokenHinge = hingeAt(0, 'broken');
+      handP = finalContact(stem.pareshR, 'paresh', 'R', 'storm 21 Paresh');
       handA = finalContact(stem.anshitaL, 'anshita', 'L', 'storm 21 Anshita');
       assert(stem.anshitaL.distance < 0.5 && handA.distanceTo(brokenHinge) < 0.5,
         'Anshita does not hold the stem through the tape run');
@@ -327,7 +328,7 @@ async page => {
       const tapeGroup = g.S.variants.tape[0].group;
       tapeGroup.updateWorldMatrix(true, false);
       assert(tapeGroup.getWorldPosition(new g.THREE.Vector3())
-        .distanceTo(handAt('paresh', 'R')) < 1.5,
+        .distanceTo(handP) < 1.5,
       'Storm tape is detached from Paresh\'s working hand');
 
       g.seek(6, 27.5);
@@ -461,19 +462,12 @@ async page => {
           assert(Math.abs(projected.x) < margin && Math.abs(projected.y) < margin && projected.z < 1,
             `${width}x${height}: ${label} leaves the tape-run frame`);
         };
-        const handNode = (who, side) => {
-          const root = g.S[who];
-          const node = root.getObjectByName(`hand_${side}_smooth__pivot`)
-            || root.getObjectByName(`hand_${side}_mesh__pivot`);
-          assert(node, `Missing ${who} ${side} hand for tape-run framing`);
-          node.updateWorldMatrix(true, false);
-          return node.getWorldPosition(new g.THREE.Vector3());
-        };
         const tape = g.S.variants.tape[0].group;
         tape.updateWorldMatrix(true, false);
         pointInSafeFrame(tape.getWorldPosition(new g.THREE.Vector3()), 'tape');
-        pointInSafeFrame(handNode('paresh', 'R'), 'Paresh working hand');
-        pointInSafeFrame(handNode('anshita', 'L'), 'Anshita stem hand');
+        const stormHands = g.performance().contacts.stem;
+        pointInSafeFrame(new g.THREE.Vector3(...stormHands.pareshR.hand), 'Paresh working hand');
+        pointInSafeFrame(new g.THREE.Vector3(...stormHands.anshitaL.hand), 'Anshita stem hand');
         for (const who of ['pHead', 'aHead']) {
           const head = g.S.rig[who];
           head.updateWorldMatrix(true, false);

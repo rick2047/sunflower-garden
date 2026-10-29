@@ -33,8 +33,9 @@ at `.artifacts/visual-audit-2026-10-29/`.
   move begins at 16.2 s and is settled at the 17.1 s hand contact; one bee has a
   small deterministic lateral detour around Anshita's face. Morning handoff poses
   were sampled, passed hand-to-face clearance assertions at the cited times, and
-  were left unchanged. The bloom hold's joined hands are still crowded by
-  foreground flowers. This is not a complete review of every listed action frame.
+  were left unchanged. Fresh storm slip/re-grip captures remain crowded, and the
+  bloom hold's joined hands are still crowded by foreground flowers. This is not a
+  complete review of every listed action frame.
 - **C — measure:** the end of seven-am now pre-rolls into the measure camera pose.
   Projected stalk-tip bounds pass at 0.08, 14.58, and 29.58 s in both viewports.
   Foliage still overlaps some face silhouettes, so the broader reveal review is
