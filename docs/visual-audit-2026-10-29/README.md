@@ -21,6 +21,14 @@ were made as part of the review.
 - [Paresh model](paresh-model.md)
 - [Anshita model](anshita-model.md)
 
-The full-resolution screenshots and contact sheets remain outside Git under
-`/tmp/opencode/sunflower-garden-visual-audit-20261029/`. The reports preserve the
-exact screenshot filenames and story times for those frames.
+The screenshots and contact sheets are persisted in this working copy under the
+Git-ignored path `.artifacts/visual-audit-2026-10-29/`:
+
+- `frames/` — 117 full-resolution film frames.
+- `contact-sheets/` — 10 film overview sheets.
+- `capture-index.md` — frame-to-time index.
+- `models/` — 12 isolated character renders, two contact sheets, and `model-index.md`.
+
+This local artifact directory is not tracked by Git and will not be present in a
+fresh clone. The findings reports in this directory are tracked; they retain the
+exact screenshot filenames and story times.
