@@ -320,7 +320,10 @@ async page => {
       stem = g.performance().contacts.stem;
       brokenHinge = hingeAt(0, 'broken');
       handP = finalContact(stem.pareshR, 'paresh', 'R', 'storm fastening hand');
+      handA = finalContact(stem.anshitaL, 'anshita', 'L', 'storm fastening hold');
       tapeGroup.updateWorldMatrix(true, false);
+      assert(stem.anshitaL.distance < 0.5 && handA.distanceTo(brokenHinge) < 0.5,
+        'Anshita does not hold the stem during fastening');
       assert(handP.distanceTo(brokenHinge) < 0.2,
         'Storm fastening hand misses the held hinge');
       assert(tapeGroup.getWorldPosition(new g.THREE.Vector3()).distanceTo(brokenHinge) < 0.8,

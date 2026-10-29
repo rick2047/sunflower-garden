@@ -1150,16 +1150,19 @@ function applyState(ch, t) {
     const marks = actorRootTargets(ch, storyT, _actorRootTargets);
     S.paresh.position.copy(marks.paresh);
     S.anshita.position.copy(marks.anshita);
-    if (c.id === 'storm' && storyT >= STORY_CUES.storm.tapeRun
-        && storyT < STORM_RETURN_AT) {
+    const stormTapeRun = c.id === 'storm'
+      && storyT >= STORY_CUES.storm.tapeRun && storyT < STORM_RETURN_AT;
+    const tapeApproach = stormTapeRun
+      ? smooth((storyT - STORY_CUES.storm.tapeRun) / 2) : 0;
+    const tapeLeave = stormTapeRun
+      ? smooth((storyT - (STORM_RETURN_AT - 2)) / 2) : 0;
+    if (stormTapeRun) {
       // After collecting the tape, move into arm's reach of the broken hinge
       // so the fastening reads as contact rather than a distant hand gesture.
-      const approach = smooth((storyT - STORY_CUES.storm.tapeRun) / 2);
-      const leave = smooth((storyT - (STORM_RETURN_AT - 2)) / 2);
-      const fasteningX = lerp(marks.paresh.x, -9.4, approach);
-      const fasteningZ = lerp(marks.paresh.z, -3, approach);
-      S.paresh.position.x = lerp(fasteningX, 0, leave);
-      S.paresh.position.z = lerp(fasteningZ, -9.2, leave);
+      const fasteningX = lerp(marks.paresh.x, -9.4, tapeApproach);
+      const fasteningZ = lerp(marks.paresh.z, -3, tapeApproach);
+      S.paresh.position.x = lerp(fasteningX, 0, tapeLeave);
+      S.paresh.position.z = lerp(fasteningZ, -9.2, tapeLeave);
     }
     if (entryActive && entry.kind === 'cut' && c.id === 'morning-after'
         && storyT < SCENE_CAMERA_BLEND_SECONDS) {
@@ -1408,15 +1411,13 @@ function applyState(ch, t) {
           anshitaL: A.aim('L', aL, holding),
           pareshR: P.aim('R', pareshTarget, pareshHold),
         };
-        if (storyT >= STORY_CUES.storm.tapeRun && storyT < STORM_RETURN_AT) {
+        if (stormTapeRun) {
           // Move the tape hand from the carry pose to the held hinge over the
           // same deterministic approach, then release it back to the carry pose
           // as he steps away on the return cut.
-          const approach = smooth((storyT - STORY_CUES.storm.tapeRun) / 2);
-          const leave = smooth((storyT - (STORM_RETURN_AT - 2)) / 2);
-          _headWorkTarget.set(lerp(lerp(8, near.x, approach), 8, leave),
-            lerp(lerp(23, near.y, approach), 23, leave),
-            lerp(lerp(15, near.z, approach), 15, leave));
+          _headWorkTarget.set(lerp(lerp(8, near.x, tapeApproach), 8, tapeLeave),
+            lerp(lerp(23, near.y, tapeApproach), 23, tapeLeave),
+            lerp(lerp(15, near.z, tapeApproach), 15, tapeLeave));
           S.performance.contacts.stem.handTargets.pareshR = _headWorkTarget.toArray();
           S.performance.contacts.stem.pareshR = P.aim('R', _headWorkTarget, 1);
         }
