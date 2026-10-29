@@ -17,15 +17,6 @@ async page => {
           ...n.quaternion.toArray(), ...n.scale.toArray()]));
         return JSON.stringify([nodes, g.camera.position.toArray(), g.camera.quaternion.toArray()]);
       };
-      const faceAnchorAt = who => {
-        const paresh = who === 'paresh';
-        const character = g.S[who];
-        const anchor = new g.THREE.Vector3(...g.S.rig.base[paresh ? 'pHeadAnchor' : 'aHeadAnchor']);
-        const body = g.S.rig[paresh ? 'pBody' : 'aBody'];
-        const base = g.S.rig.base[paresh ? 'pBody' : 'aBody'];
-        anchor.y += body.position.y - base.position[1] + 4;
-        return character.localToWorld(anchor);
-      };
       for (const chapter of g.chapters) {
         let end = 0;
         for (const line of chapter.dialogue) {
@@ -46,15 +37,6 @@ async page => {
       g.seek(6,21); assert(rain !== g.S.rain.geometry.attributes.position.getY(0), 'Rain freezes after visualDur');
       g.seek(10,22); const bee = g.S.bees[0].position.clone();
       g.seek(10,23); assert(bee.distanceTo(g.S.bees[0].position) > 0.01, 'Bees freeze after visualDur');
-      for (const time of [15.5, 15.6]) {
-        g.seek(10, time);
-        const face = faceAnchorAt('anshita');
-        const bee = g.S.bees[1];
-        bee.updateWorldMatrix(true, false);
-        const beePosition = bee.getWorldPosition(new g.THREE.Vector3());
-        assert(beePosition.distanceTo(face) > 12,
-          `Bloom bee crowds Anshita's face at ${time}: ${beePosition.distanceTo(face).toFixed(2)}`);
-      }
       g.seek(10,15.499); const p = g.S.paresh.position.clone(), a = g.S.anshita.position.clone();
       g.seek(10,15.501);
       assert(p.distanceTo(g.S.paresh.position) < 0.01 && a.distanceTo(g.S.anshita.position) < 0.01, 'Embrace snaps');
@@ -373,11 +355,6 @@ async page => {
         const hp = finalContact(contacts.paresh, 'paresh', 'L', `morning ${t} Paresh`);
         const ha = finalContact(contacts.anshita, 'anshita', 'R', `morning ${t} Anshita`);
         assert(hp.distanceTo(ha) < 0.2, `Morning-after hands are apart at ${t}`);
-        const faceClearance = Math.min(hp.distanceTo(faceAnchorAt('paresh')),
-          hp.distanceTo(faceAnchorAt('anshita')), ha.distanceTo(faceAnchorAt('paresh')),
-          ha.distanceTo(faceAnchorAt('anshita')));
-        assert(faceClearance > 9,
-          `Morning-after hand hold crowds a face at ${t}: ${faceClearance.toFixed(2)}`);
       }
       g.seek(7, g.chapters[7].dialogue[4].start + 0.1);
       assert(g.dialogue().text === 'Then hold it with me.', 'Handoff line not sampled');
@@ -593,11 +570,11 @@ async page => {
     // The character-attributed bubble remains in bounds on every dialogue turn.
     for (const [width,height] of [[1440,900],[390,844]]) {
       await page.setViewportSize({width,height});
-      const { bubbles, expectedCount } = await page.evaluate(() => {
+      const { bubbles, expectedCount, beeClearances, handClearances } = await page.evaluate(() => {
         const g = window.__garden;
         const bubble = document.getElementById('speech-bubble');
         const reactionBadge = document.getElementById('listener-reaction');
-        const projectHead = (name) => {
+        const faceAnchorAt = name => {
           const isParesh = name === 'Paresh';
           const character = isParesh ? g.S.paresh : g.S.anshita;
           const anchor = g.S.rig.base[isParesh ? 'pHeadAnchor' : 'aHeadAnchor'];
@@ -605,8 +582,10 @@ async page => {
           const bodyBase = g.S.rig.base[isParesh ? 'pBody' : 'aBody'];
           const point = new g.THREE.Vector3(...anchor);
           point.y += body.position.y - bodyBase.position[1] + 4;
-          character.localToWorld(point);
-          point.project(g.camera);
+          return character.localToWorld(point);
+        };
+        const projectHead = name => {
+          const point = faceAnchorAt(name).project(g.camera);
           return { x: (point.x * 0.5 + 0.5) * innerWidth,
             y: (-point.y * 0.5 + 0.5) * innerHeight };
         };
@@ -647,12 +626,39 @@ async page => {
                 rect: { left: reactionRect.left, top: reactionRect.top,
                   right: reactionRect.right, bottom: reactionRect.bottom,
                   width: reactionRect.width, height: reactionRect.height }, listenerHead },
-              announcement: document.getElementById('announcement').textContent });
+            announcement: document.getElementById('announcement').textContent });
           }
         }
-        return { bubbles: results, expectedCount };
+        const beeClearances = [];
+        for (const time of [15.5, 15.6]) {
+          g.seek(10, time);
+          const bee = g.S.bees[1];
+          bee.updateWorldMatrix(true, false);
+          beeClearances.push({ time,
+            distance: bee.getWorldPosition(new g.THREE.Vector3())
+              .distanceTo(faceAnchorAt('Anshita')) });
+        }
+        const handClearances = [];
+        for (const time of [23.8, 24.5, 29, 30.5]) {
+          g.seek(7, time);
+          const hold = g.performance().contacts.handHold;
+          const paresh = new g.THREE.Vector3(...hold.paresh.hand);
+          const anshita = new g.THREE.Vector3(...hold.anshita.hand);
+          const pareshFace = faceAnchorAt('Paresh'), anshitaFace = faceAnchorAt('Anshita');
+          handClearances.push({ time, distance: Math.min(paresh.distanceTo(pareshFace),
+            paresh.distanceTo(anshitaFace), anshita.distanceTo(pareshFace),
+            anshita.distanceTo(anshitaFace)) });
+        }
+        return { bubbles: results, expectedCount, beeClearances, handClearances };
       });
       assert(bubbles.length === expectedCount, 'Not every dialogue turn has a speech-bubble sample');
+      for (const { time, distance } of beeClearances) {
+        assert(distance > 12, `Bloom bee crowds Anshita's face at ${time}: ${distance.toFixed(2)}`);
+      }
+      for (const { time, distance } of handClearances) {
+        assert(distance > 9,
+          `Morning-after hand hold crowds a face at ${time}: ${distance.toFixed(2)}`);
+      }
       for (const sample of bubbles) {
         const { rect, dialogue, first, repeated } = sample;
         assert(sample.visible, `Speech bubble hidden in chapter ${sample.chapter}`);
