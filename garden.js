@@ -41,6 +41,10 @@ const JOY_MARKS = {
   paresh: { startX: -17, endX: -7.5, z: 6, yaw: Math.PI + 0.4 },
   anshita: { startX: 17, endX: 7.5, z: 6, yaw: Math.PI - 0.4 },
 };
+const BLOOM_BEE_FACE_DETOUR = {
+  beeIndex: 1, lateralX: 6, startsAt: 14.8, rampSeconds: 0.7,
+  fadesAt: 15.6, fadeSeconds: 1,
+};
 const STORM_RETURN_AT = STORY_CUES.storm.return;
 const STORM_KNEEL = { inStart: STORY_CUES.storm.kneelIn, inEnd: STORY_CUES.storm.kneelEnd,
   settleEnd: STORY_CUES.storm.settleEnd };
@@ -1570,10 +1574,12 @@ function applyState(ch, t) {
     // Bee 2 briefly crosses Anshita's lower face at the joy approach. Give it
     // a small, smooth lateral detour through that shot; the path remains an
     // absolute-time orbit and rejoins the garden route before the shared hold.
-    const faceClearance = c.id === 'bloom' && i === 1
-      ? 6 * smooth((bt - 14.8) / 0.7) * (1 - smooth((bt - 15.6) / 1.0))
+    const bloomBeeDetourX = c.id === 'bloom' && i === BLOOM_BEE_FACE_DETOUR.beeIndex
+      ? BLOOM_BEE_FACE_DETOUR.lateralX
+        * smooth((bt - BLOOM_BEE_FACE_DETOUR.startsAt) / BLOOM_BEE_FACE_DETOUR.rampSeconds)
+        * (1 - smooth((bt - BLOOM_BEE_FACE_DETOUR.fadesAt) / BLOOM_BEE_FACE_DETOUR.fadeSeconds))
       : 0;
-    b.position.set(Math.sin(bt * 0.8 + s) * 15 + (i - 1) * 7 - faceClearance,
+    b.position.set(Math.sin(bt * 0.8 + s) * 15 + (i - 1) * 7 - bloomBeeDetourX,
       21 + Math.sin(bt * 1.6 + s) * 3.5,
       4 + Math.cos(bt * 0.6 + s) * 11);
     b.rotation.y = Math.sin(bt * 0.8 + s);
